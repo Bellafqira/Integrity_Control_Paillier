@@ -91,6 +91,11 @@ def run_evaluation():
 
         print("  Generating and embedding watermark...")
         watermark = qim.generate_watermark()
+        # duplicate only the first 256 bits
+        base = watermark[:256]
+
+
+
         watermarked_data = qim.embed(quantized_vertices.copy(), watermark)
 
         model_ber_scores = []

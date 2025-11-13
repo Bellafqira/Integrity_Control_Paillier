@@ -129,7 +129,7 @@ def run_evaluation():
     print("\n--- Evaluation Finished ---")
 
     # 3. Finalize and save the plot
-    plt.xlabel("Delta (Quantization Step 'q')")
+    plt.xlabel("Delta (Quantization Step 'Delta')")
     plt.ylabel("Bit Error Rate (BER)")
     plt.title(f"QIM Robustness to Gaussian Noise (Strength={NOISE_STRENGTH})")
     plt.legend(loc="best")

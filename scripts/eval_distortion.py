@@ -114,7 +114,7 @@ def run_evaluation():
 
     print("\n--- Evaluation Finished ---")
 
-    plt.xlabel("Delta (Quantization Step 'q')")
+    plt.xlabel("Delta (Quantization Step 'Delta')")
     plt.ylabel("Distortion (Max Hausdorff Distance)")
     plt.title("QIM Distortion vs. Quantization Step (Delta)")
     plt.legend(loc="best")
