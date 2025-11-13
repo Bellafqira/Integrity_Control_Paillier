@@ -2,7 +2,9 @@ import os
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+from networkx.algorithms.bipartite.basic import color
 
+from integrity_ctrl.util.watermark_util import tile_first_block, majority_vote_block
 # Import your custom modules
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear  # Plaintext QIM test
@@ -15,15 +17,15 @@ FIXED_DELTA = 4
 # 2. The Noise (strength) range we will test
 # We will test from 0 (no noise) to 50
 # (Std dev 50 is > half of FIXED_DELTA, so BER should be high)
-NOISE_LEVELS_TO_TEST =  [0,  0.2,  0.5,  1.0,  2.0,  3.0,  4.0] #  np.arange(0, 51, 5)  # Tests 0, 5, 10, 15, ..., 50
+NOISE_LEVELS_TO_TEST =  [0,  0.2,  0.5,  1.0,  2.0,  3.0,  4.0, 5.0] #  np.arange(0, 51, 5)  # Tests 0, 5, 10, 15, ..., 50
 
 # 3. Watermarking Parameters
-QUANT_FACTOR = 10 ** 6  # 6 decimal places of precision
+QUANT_FACTOR = 10 ** 4  # 6 decimal places of precision
 
 # 4. Files
 DATASET_PATH = "data/meshes/*.obj"  # The glob to find all your models
 RESULTS_DIR = "outputs/figures"
-PLOT_FILENAME = os.path.join(RESULTS_DIR, "robustness_ber_vs_noise.png")
+PLOT_FILENAME = os.path.join(RESULTS_DIR, "robustness_ber_vs_noise.pdf")
 
 
 # --- Functions ---
@@ -60,9 +62,9 @@ def run_evaluation():
 
     all_results = {}
     plt.figure(figsize=(12, 8))
-
+    colors = ['red', 'black', 'blue', 'green', 'purple', 'purple']
     # Loop 1: Iterate over each 3D model
-    for model_file in model_files:
+    for idx, model_file in enumerate(model_files):
         model_name = os.path.basename(model_file)
         print(f"\nProcessing model: {model_name}")
 
@@ -92,13 +94,12 @@ def run_evaluation():
         print("  Generating and embedding watermark...")
         watermark = qim.generate_watermark()
         # duplicate only the first 256 bits
-        base = watermark[:256]
-
-
+        watermark = tile_first_block(np.array(watermark), 256)
 
         watermarked_data = qim.embed(quantized_vertices.copy(), watermark)
 
         model_ber_scores = []
+        model_ber_scores_MV = []
 
         # Loop 2: Iterate over each Noise level
         for noise_strength in NOISE_LEVELS_TO_TEST:
@@ -117,17 +118,23 @@ def run_evaluation():
 
             # b. Extract the watermark
             extracted_mark = qim.extract(attacked_data)
-
+            extracted_mark_MV = majority_vote_block(np.array(extracted_mark), 256)
             # c. Calculate the BER
             ber = calculate_ber(watermark, extracted_mark)
+            ber_MV = calculate_ber(watermark[:256], extracted_mark_MV)
+
             model_ber_scores.append(ber)
+            model_ber_scores_MV.append(ber_MV)
+
             print(f"    -> Noise={noise_strength}, BER: {ber * 100:.2f}%")
 
         # End of Noise loop
         all_results[model_name] = model_ber_scores
 
         # Plot the curve for this model
-        plt.plot(NOISE_LEVELS_TO_TEST, model_ber_scores, marker='o', linestyle='-', label=model_name)
+        plt.plot(NOISE_LEVELS_TO_TEST, model_ber_scores, marker='o', linestyle='-', label=model_name.removesuffix(".obj"), color=colors[idx])
+        # Plot the curve for this model
+        plt.plot(NOISE_LEVELS_TO_TEST, model_ber_scores_MV, marker='x', linestyle='--', label=model_name.removesuffix(".obj") + ' majority vote', color=colors[idx])
 
     # End of Model loop
     print("\n--- Evaluation Finished ---")

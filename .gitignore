@@ -1,57 +1,42 @@
 # --- Python Virtual Environments ---
-# Ignore the virtual environment folder. This is the most important!
-
 venv/
 .venv/
-*.env
-.env
 env/
 ENV/
 env.bak/
 venv.bak/
+*.env
+.env
 
-#--- Python Cache Files ---
-#Ignore compiled .pyc files and pycache directories
-
-pycache/
-*.pyc
-*.pyo
-*.pyd
+# --- Python Cache Files ---
 __pycache__/
+*.py[cod]
+*$py.class
 
-#--- Project Generated Files (Outputs) ---
-#Ignore all results, figures, and generated models.
-#The README should explain how to generate them.
-
+# --- Project Generated Files (Outputs) ---
 outputs/
 results/
 tests/results/
 *.obj
 *.png
 
-#--- Secret Keys (VERY IMPORTANT) ---
-#NEVER commit your private keys to GitHub!
-#The cli.py script saves them here by default.
-
+# --- Secret Keys ---
 my_keys/
 keys/
 *.key
 *.priv
 
-#--- PyCharm IDE Files ---
-#Ignore your editor's configuration folder
-
+# --- IDE and Editor Files ---
 .idea/
+.vscode/
 
-#--- Operating System Metadata ---
-#Ignore OS-specific metadata files
-
+# --- Operating System Metadata ---
 .DS_Store
 Thumbs.db
 
-#--- Python Build Artifacts ---
-#Ignore folders created when "building" a package
-
+# --- Python Build Artifacts ---
 build/
 dist/
 *.egg-info/
+*.egg
+src/integrity_ctrl.egg-info/
