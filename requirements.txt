@@ -1,7 +1,5 @@
-gmpy2
 numpy
 matplotlib
-scipy
 ecdsa
 pymeshlab
 trimesh
