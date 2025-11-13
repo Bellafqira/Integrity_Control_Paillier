@@ -1,0 +1,5 @@
+results
+*.obj
+.venv
+outputs
+my_keys
