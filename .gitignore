@@ -4,3 +4,65 @@ results
 outputs
 my_keys
 .idea
+--- Python Virtual Environments ---
+
+Ignore the virtual environment folder. This is the most important!
+
+venv/
+.venv/
+*.env
+.env
+env/
+ENV/
+env.bak/
+venv.bak/
+
+--- Python Cache Files ---
+
+Ignore compiled .pyc files and pycache directories
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+--- Project Generated Files (Outputs) ---
+
+Ignore all results, figures, and generated models.
+
+The README should explain how to generate them.
+
+outputs/
+results/
+tests/results/
+
+--- Secret Keys (VERY IMPORTANT) ---
+
+NEVER commit your private keys to GitHub!
+
+The cli.py script saves them here by default.
+
+keys/
+*.key
+*.priv
+
+--- PyCharm IDE Files ---
+
+Ignore your editor's configuration folder
+
+.idea/
+
+--- Operating System Metadata ---
+
+Ignore OS-specific metadata files
+
+.DS_Store
+Thumbs.db
+
+--- Python Build Artifacts ---
+
+Ignore folders created when "building" a package
+
+build/
+dist/
+*.egg-info/
