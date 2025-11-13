@@ -17,6 +17,7 @@ pycache/
 *.pyc
 *.pyo
 *.pyd
+__pycache__/
 
 #--- Project Generated Files (Outputs) ---
 #Ignore all results, figures, and generated models.
@@ -26,6 +27,7 @@ outputs/
 results/
 tests/results/
 *.obj
+*.png
 
 #--- Secret Keys (VERY IMPORTANT) ---
 #NEVER commit your private keys to GitHub!
