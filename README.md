@@ -35,7 +35,7 @@ This project uses **pip** and **venv** for dependency management.
 ### 1.  Clone the repository
 
 ```bash
-git clone <your-repository-url>
+git clone git@github.com:Bellafqira/Integrity_Control_Paillier.git
 cd Integrity_Control_Paillier
 ```
 ### 2. Create a virtual environment

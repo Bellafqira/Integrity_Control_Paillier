@@ -17,10 +17,10 @@ FIXED_DELTA = 4
 # 2. The Noise (strength) range we will test
 # We will test from 0 (no noise) to 50
 # (Std dev 50 is > half of FIXED_DELTA, so BER should be high)
-NOISE_LEVELS_TO_TEST =  [0,  0.2,  0.5,  1.0,  2.0,  3.0,  4.0, 5.0] #  np.arange(0, 51, 5)  # Tests 0, 5, 10, 15, ..., 50
+NOISE_LEVELS_TO_TEST =  [0, 0.5, 1, 1.5, 2, 2.5, 3] #  np.arange(0, 51, 5)  # Tests 0, 5, 10, 15, ..., 50
 
 # 3. Watermarking Parameters
-QUANT_FACTOR = 10 ** 4  # 6 decimal places of precision
+QUANT_FACTOR = 10 ** 6  # 6 decimal places of precision
 
 # 4. Files
 DATASET_PATH = "data/meshes/*.obj"  # The glob to find all your models
@@ -79,6 +79,7 @@ def run_evaluation():
         # 2. Calculate watermark size (as requested)
         # We use the maximum capacity: number of coordinates
         watermark_length = original_vertices.flatten().size
+        print("hhhhhhhhhhhhhheeeeeeeeeeeeere", original_vertices.shape)
         if watermark_length == 0:
             print("  -> Model has no vertices. Skipping.")
             continue
