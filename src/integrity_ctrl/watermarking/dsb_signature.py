@@ -148,7 +148,7 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
         # 3. Calculate the hash of this restored model
         restored_hash = self._hash_model(restored_data)
-        print("restored_hash", restored_hash)
+
         # 4. Compare both signatures
         print("DSB: Verifying ECDSA signature...")
         is_valid = ecdsa_utils.verify_signature(

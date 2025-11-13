@@ -148,8 +148,7 @@ def handle_embed(args):
     elif args.sig_type == 'psb':
         # Use PSB to watermark the *remaining* coordinates
         # (e.g., DSB uses 0-511, PSB uses 512-end)
-        sig_len = 512
-        psb_wm_length = wm_length - sig_len
+        psb_wm_length = wm_length
         if psb_wm_length <= 0:
             raise ValueError("Model is too small to combine DSB and PSB.")
 
@@ -160,9 +159,8 @@ def handle_embed(args):
         final_data = sqim_embedded_data.copy()
         # Flatten, take the end, watermark, reshape
         flat_final = final_data.flatten()
-        data_to_watermark = flat_final[sig_len:]
-        watermarked_part = psb_scheme.embed(data_to_watermark, psb_watermark)
-        flat_final[sig_len:] = watermarked_part
+        watermarked_part = psb_scheme.embed(flat_final, psb_watermark)
+        flat_final = watermarked_part
         final_data = flat_final.reshape(final_data.shape)
 
         payload_to_save["model_data"] = final_data
@@ -215,8 +213,7 @@ def handle_verify(args):
 
         # Extract the PSB watermark from the end of the data
         flat_data = model_data.flatten()
-        data_to_extract = flat_data[wm_length - psb_wm_length:]
-        extracted_psb = psb_scheme.extract(data_to_extract)
+        extracted_psb = psb_scheme.extract(flat_data)
 
         integrity_valid = (extracted_psb == payload['psb_watermark'])
 

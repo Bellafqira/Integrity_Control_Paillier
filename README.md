@@ -1,7 +1,7 @@
 # Integrity Control and Traceability for Paillier-Encrypted Data
 
-This project provides a complete solution for watermarking and integrity verification of 3D models encrypted with the Paillier cryptosystem.
-
+This project provides a complete, and first solution for guaranteeing the integrity and authenticity of Paillier-encrypted data, without the need of metadata or impacting the plaintext data.
+with a specific focus on 3D models.
 ## About The Project
 
 Ensuring the integrity and authenticity of sensitive data (such as medical or industrial models) after encryption is a major challenge.  
@@ -61,7 +61,7 @@ Before starting, you can verify that all cryptographic components and watermarki
 
 **Command:**
 ```bash
-python -m unittest discover -v
+python -m unittest discover -v tests
 ```
 Description:
 This command will automatically discover all test_*.py files in your tests/ directory. It will run each test function (like test_full_qim_cycle, test_dsb_signature_pipeline, etc.) and confirm that everything is working as expected.
@@ -76,7 +76,7 @@ Here is a complete workflow:
 First, generate your Paillier (for encryption) and ECDSA (for signature) keys.
 ```bash
 # Creates a 'my_keys' folder and saves the 4 key files inside it
-python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
+$env:PYTHONPATH = "."; python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
 ```
 * `--key-dir "my_keys"`: (Optional) Specifies the folder to save the keys.
 * `--paillier-bits 2048`: (Optional) Defines the Paillier key size (the larger, the more secure).
@@ -94,6 +94,9 @@ Next, take an `.obj` model, apply the full watermarking pipeline, and save the e
 6. Applies the DSB integrity signature.
 
 **Command:**
+```bash
+python scripts/cli.py embed --in-file "data/meshes/bunny.obj" --out-file "outputs/models/bunny_signed.pkl" --key-dir "my_keys" --delta 100 --quant 1000000 --sig-type dsb
+```
 
 * `--in-file`: The original `.obj` model to protect.
 * `--out-file`: The output `.pkl` file that will contain the encrypted data.
@@ -118,7 +121,7 @@ Finally, take a protected `.pkl` file, check its integrity, and if it is authent
 python scripts/cli.py verify --in-file "outputs/models/bunny_signed.pkl" --out-model "outputs/models/bunny_decrypted_verified.obj" --key-dir "my_keys"
 ```
 * `--in-file`: The `.pkl` file you want to verify.
-* `--out-model`: The output path for the decrypted `.ob`j model if verification succeeds.
+* `--out-model`: The output path for the decrypted `.obj` model if verification succeeds.
 * `--key-dir`: The key directory (must contain the private key for decryption).
 
 ### 2.   Using the CLI (cli.py)
