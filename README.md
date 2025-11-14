@@ -95,7 +95,7 @@ Next, take an `.obj` model, apply the full watermarking pipeline, and save the e
 
 **Command:**
 ```bash
-python scripts/cli.py embed --in-file "data/meshes/bunny.obj" --out-file "outputs/models/bunny_signed.pkl" --key-dir "my_keys" --delta 100 --quant 1000000 --sig-type dsb
+python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed.pkl" --key-dir "my_keys" --delta 100 --quant 1000000 --sig-type dsb
 ```
 
 * `--in-file`: The original `.obj` model to protect.
@@ -118,7 +118,7 @@ Finally, take a protected `.pkl` file, check its integrity, and if it is authent
 
 **Command :**
 ```bash
-python scripts/cli.py verify --in-file "outputs/models/bunny_signed.pkl" --out-model "outputs/models/bunny_decrypted_verified.obj" --key-dir "my_keys"
+python scripts/cli.py verify --in-file "outputs/models/casting_signed.pkl" --out-model "outputs/models/bunny_decrypted_verified.obj" --key-dir "my_keys"
 ```
 * `--in-file`: The `.pkl` file you want to verify.
 * `--out-model`: The output path for the decrypted `.obj` model if verification succeeds.
