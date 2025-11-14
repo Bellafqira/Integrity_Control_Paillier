@@ -76,7 +76,7 @@ Here is a complete workflow:
 First, generate your Paillier (for encryption) and ECDSA (for signature) keys.
 ```bash
 # Creates a 'my_keys' folder and saves the 4 key files inside it
-$env:PYTHONPATH = "."; python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
+ export PYTHONPATH="$PYTHONPATH:."; python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
 ```
 * `--key-dir "my_keys"`: (Optional) Specifies the folder to save the keys.
 * `--paillier-bits 2048`: (Optional) Defines the Paillier key size (the larger, the more secure).
