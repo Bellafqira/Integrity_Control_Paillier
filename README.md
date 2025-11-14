@@ -118,7 +118,7 @@ Finally, take a protected `.pkl` file, check its integrity, and if it is authent
 
 **Command :**
 ```bash
-python scripts/cli.py verify --in-file "outputs/models/casting_signed.pkl" --out-model "outputs/models/bunny_decrypted_verified.obj" --key-dir "my_keys"
+python scripts/cli.py verify --in-file "outputs/models/casting_signed.pkl" --out-model "outputs/models/casting_decrypted_verified.obj" --key-dir "my_keys"
 ```
 * `--in-file`: The `.pkl` file you want to verify.
 * `--out-model`: The output path for the decrypted `.obj` model if verification succeeds.
