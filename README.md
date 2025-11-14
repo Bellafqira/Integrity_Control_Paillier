@@ -80,7 +80,7 @@ pip install -e .
 _(Don't forget the . at the end! This means "install the project in the current directory in editable mode.")
 This installs all dependencies (from pyproject.toml) and makes the src/integrity_ctrl package available globally._
 
-## Quick Start
+## How to Use
 There are two main ways to interact with the code: running the unit tests (for development) or using the main CLI (for production use).
 ### 1.  Run Unit Tests
 Before starting, you can verify that all cryptographic components and watermarking modules are working correctly on your machine.
