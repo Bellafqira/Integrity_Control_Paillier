@@ -1,26 +1,43 @@
 # Integrity Control and Traceability for Paillier-Encrypted Data
 
-This project provides a complete, novel solution for guaranteeing the integrity and authenticity of Paillier-encrypted data, with a specific focus on 3D models.
+This project provides a complete solution for guaranteeing the **integrity**, **authenticity**, and **traceability** of Paillier-encrypted data, with a particular focus on 3D models.
 
-This is one of the first solutions to ensure the integrity of Paillier-encrypted data without external metadata or impacting the plaintext, based on a new mechanism we have developed: Deterministic Self-Blinding (DSB).
+It introduces one of the first practical mechanisms for integrity verification **inside the encrypted domain**, without external metadata and without modifying the underlying plaintext.  
+This is achieved through a new method we developed: **Deterministic Self-Blinding (DSB)**.
 
-In addition to integrity (protection against tampering), the project also ensures traceability:
+In addition to encrypted-domain integrity, the system offers **two-layer traceability**:
 
-1.   **Plaintext QIM (Quantization Index Modulation):** A "pre-watermark" (e.g., all zeros) is embedded in the plaintext 3D model.
-2. **Encrypted-Domain SQIM (Secured QIM):** A second, secret watermark is embedded in the encrypted domain using Paillier's homomorphic properties.
+1. **Plaintext QIM (Quantization Index Modulation):**  
+   A deterministic "pre-watermark" (e.g., all zeros) is embedded directly into the plaintext vertices.
 
-This architecture allows for guaranteeing the model's authenticity before decryption (with DSB) and tracking its traceability after decryption (with QIM/SQIM).
+2. **Encrypted-Domain SQIM (Secured QIM):**  
+   A second, secret watermark is embedded using Paillier’s additively homomorphic properties.
+
+Together, these techniques allow:
+
+- **Authenticity before decryption** (via DSB integrity verification),  
+- **Traceability after decryption** (via QIM/SQIM watermarking).
+
+___
 ## Features
 
-- **Encrypted-Domain Integrity (DSB):** Signs and verifies an entire encrypted model using ECDSA and a novel Deterministic Self-Blinding (DSB) technique that works with the PHE (Pure-Python Homomorphic Encryption) library. 
-- **Encrypted-Domain Traceability (SQIM):** Implements a composite watermarking pipeline that survives encryption and decryption.
-- **Probabilistic Watermarking (PSB):** Includes an implementation of an LSB-parity-based PSB scheme for comparison.
-- **Command-Line Interface (CLI):** A single, powerful entry point (`scripts/cli.py`) to use all features (generate keys, encrypt, sign, verify).
-- **Evaluation Suite:** A set of scripts (`scripts/eval_...`) to reproduce robustness (BER vs. Noise) and distortion (Hausdorff vs. Delta) analysis.
+- **Encrypted-Domain Integrity (DSB)**  
+  A novel technique enabling signature and verification entirely on encrypted data using Paillier + ECDSA.
 
+- **Encrypted-Domain Traceability (SQIM)**  
+  A watermarking scheme that remains detectable after encryption and decryption.
+
+- **Probabilistic Self-Blinding (PSB)**  
+  An LSB-parity watermarking method included for comparison.
+
+- **Unified Command-Line Interface**  
+  `scripts/cli.py` exposes key generation, encryption, watermarking, signing, verification.
+
+- **Evaluation Suite**  
+  Scripts for robustness (BER) and distortion (hausdorff) experiments.
 ---
 ## Project Structure
-```
+```rust
 Integrity_Control_Paillier/
 ├── data/
 │   └── meshes/             # .obj models
@@ -80,8 +97,12 @@ pip install -e .
 _(Don't forget the . at the end! This means "install the project in the current directory in editable mode.")
 This installs all dependencies (from pyproject.toml) and makes the src/integrity_ctrl package available globally._
 
-## How to Use
-There are two main ways to interact with the code: running the unit tests (for development) or using the main CLI (for production use).
+## Usage
+There are two ways to interact with the system:
+
+* running the CLI (main functionality)
+* running the unit tests (development)
+
 ### 1.  Run Unit Tests
 Before starting, you can verify that all cryptographic components and watermarking modules are working correctly on your machine.
 
@@ -103,8 +124,9 @@ First, generate your Paillier (for encryption) and ECDSA (for signature) keys.
 # This will create a 'my_keys' folder and save 4 key files inside it
  # $env:PYTHONPATH = "."; for CMD or Windows shell
  export PYTHONPATH="$PYTHONPATH:."; # Linux
- python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
+ python scripts/cli.py generate-keys --key-dir "my_keys_2048" --paillier-bits 2048
 ```
+
 * `--key-dir "my_keys"`: (Optional) Specifies the folder to save the keys. Default is `keys`.
 * `--paillier-bits 2048`: (Optional) Defines the Paillier key size (the larger, the more secure). Default is `1024`.
 
@@ -124,7 +146,7 @@ Next, take an `.obj` model, apply the full watermarking  and integrity pipeline,
 
 **Command:**
 ```bash
-python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed.pkl" --key-dir "my_keys" --delta 100 --quant 1000000 --sig-type dsb
+python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_dsb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 1000000 --sig-type dsb
 ```
 
 * `--in-file`: (Required) The original `.obj` model to protect.
@@ -133,6 +155,12 @@ python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outp
 * `--delta`: The QIM quantization step.
 * `--quant`: The quantization factor for floats (e.g., `1000000` for 6 decimal places).
 * `--sig-type`: `dsb` (recommended) or `psb`.
+
+Example (PSB integrity):
+```bash
+python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_psb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 1000000 --sig-type psb
+```
+
 
 **Step 3: Verify and Decrypt (Verify)**
 Finally, take a protected `.pkl` file, check its integrity, and if it is authentic, decrypt it and extract the watermark.
@@ -148,12 +176,16 @@ Finally, take a protected `.pkl` file, check its integrity, and if it is authent
 
 **Command :**
 ```bash
-python scripts/cli.py verify --in-file "outputs/models/casting_signed.pkl" --out-model "outputs/models/casting_decrypted_verified.obj" --key-dir "my_keys"
+python scripts/cli.py verify --in-file "outputs/models/casting_signed_2048_dsb.pkl" --out-model "outputs/models/casting_verified_dsb.obj" --key-dir "my_keys_2048"
 ```
 * `--in-file`: (Required) The `.pkl` file you want to verify (from Step 2).
 * `--out-model`: (Required) The output path for the final decrypted `.obj` model.
 * `--key-dir`: The key directory (must contain your private keys for decryption).
 
+Verify PSB-protected model:
+```bash
+python scripts/cli.py verify --in-file "outputs/models/casting_signed_2048_psb.pkl" --out-model "outputs/models/casting_verified_psb.obj" --key-dir "my_keys_2048"
+```
 ### 3.   Run Evaluations
 To reproduce the analysis graphs for distortion and robustness, you can use the evaluation scripts:
 
@@ -165,3 +197,42 @@ python scripts/eval_robustness_noise_majority_vote.py
 python scripts/eval_distortion.py
 ```
 The graphs will be saved in `outputs/figures/`.
+
+ ## Automated Batch Pipeline (Optional)
+You can automate the full workflow using the following script:
+
+`run_all.sh` (Linux/macOS)
+```bash
+#!/bin/bash
+
+LOGFILE="run_pipeline_output.log"
+echo "=== Pipeline started at $(date) ===" | tee -a "$LOGFILE"
+
+run() {
+    echo "" | tee -a "$LOGFILE"
+    echo "=== Running: $1 ===" | tee -a "$LOGFILE"
+    bash -c "$1" 2>&1 | tee -a "$LOGFILE"
+}
+
+run "python scripts/cli.py generate-keys --key-dir 'my_keys_2048' --paillier-bits 2048"
+
+run "python scripts/cli.py embed --in-file 'data/meshes/casting.obj' --out-file 'outputs/models/casting_signed_2048_dsb.pkl' --key-dir 'my_keys_2048' --delta 4 --quant 1000000 --sig-type dsb"
+
+run 'python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_psb.pkl" --key-dir "my_keys_2048" --delta 4 --quant 1000000 --sig-type psb'
+
+run "python scripts/cli.py verify --in-file 'outputs/models/casting_signed_2048_psb.pkl' --out-model 'outputs/models/casting_verified_psb.obj' --key-dir 'my_keys_2048'"
+
+run "python scripts/cli.py verify --in-file 'outputs/models/casting_signed_2048_dsb.pkl' --out-model 'outputs/models/casting_verified_dsb.obj' --key-dir 'my_keys_2048'"
+
+echo "=== Pipeline finished at $(date) ===" | tee -a "$LOGFILE"
+
+```
+Make it executable:
+```bash
+chmod +x run_all.sh
+./run_all.sh
+```
+The full log is saved to:
+```lu
+run_pipeline_output.log
+```
