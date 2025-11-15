@@ -19,7 +19,7 @@ results/
 tests/results/
 *.obj
 *.png
-
+*.log
 # --- Secret Keys ---
 my_keys/
 keys/
