@@ -109,7 +109,7 @@ def handle_embed(args):
         [paillier_pub.encrypt(int(c)) for c in flat_data],
         dtype=object
     ).reshape(pre_watermarked_data.shape)
-    print(f"Encryption finished in {time.time() - start_enc:.2f}s")
+    print(f"Encryption finished in {(time.time() - start_enc)*1000:.3f}ms")
 
     # 6. Embed the 2nd watermark (SQIM)
     print("Generating and embedding SQIM watermark (encrypted)...")
@@ -140,7 +140,12 @@ def handle_embed(args):
 
         prepared_data = sig_scheme._prepare_data_for_signing(sqim_embedded_data)
         signature_bits, _ = sig_scheme.generate_watermark(prepared_data)
+        ##### Embedding time with PSB
+        start = time.perf_counter()
         final_data = sig_scheme.embed(prepared_data, signature_bits)
+        end = time.perf_counter()
+        elapsed_ms = (end - start) * 1000
+        print(f"PSB Embedding time in ms : {elapsed_ms:.3f} ms")
 
         payload_to_save["model_data"] = final_data
         payload_to_save["signature_length"] = sig_len
@@ -159,7 +164,13 @@ def handle_embed(args):
         final_data = sqim_embedded_data.copy()
         # Flatten, take the end, watermark, reshape
         flat_final = final_data.flatten()
+        #####  Embedding by DSB
+        start = time.perf_counter()
         watermarked_part = psb_scheme.embed(flat_final, psb_watermark)
+        end = time.perf_counter()
+        elapsed_ms = (end - start) * 1000
+        print(f"DSB Embedding time in ms : {elapsed_ms:.3f} ms")
+
         flat_final = watermarked_part
         final_data = flat_final.reshape(final_data.shape)
 
@@ -205,7 +216,12 @@ def handle_verify(args):
         sig_len = payload['signature_length']
         dsb_keys = {"signing_key": ecdsa_sk, "verification_key": ecdsa_vk}
         sig_scheme = DSB_Signature(paillier_pub, dsb_keys, sig_len)
+
+        start = time.perf_counter()
         integrity_valid = sig_scheme.verify(model_data)
+        end = time.perf_counter()
+        elapsed_ms = (end - start)*1000
+        print(f"DSB verification time in ms: {elapsed_ms:.3f} ms")
 
     elif sig_type == 'psb':
         psb_wm_length = payload['signature_length']
@@ -213,7 +229,12 @@ def handle_verify(args):
 
         # Extract the PSB watermark from the end of the data
         flat_data = model_data.flatten()
+
+        start = time.perf_counter()
         extracted_psb = psb_scheme.extract(flat_data)
+        end = time.perf_counter()
+        elapsed_ms = (end - start) * 1000
+        print(f"PSB verification time in ms: {elapsed_ms:.3f} ms")
 
         integrity_valid = (extracted_psb == payload['psb_watermark'])
 
@@ -234,7 +255,7 @@ def handle_verify(args):
         [paillier_priv.decrypt(c) for c in flat_data],
         dtype=np.int64
     ).reshape(model_data.shape)
-    print(f"Decryption finished in {time.time() - start_dec:.2f}s")
+    print(f"Decryption finished in {(time.time() - start_dec)*1000:.3f}ms")
 
     # 5. Extract internal QIM watermark
     print("Extracting internal QIM watermark (plaintext)...")

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import hashlib
 from phe import paillier
@@ -109,11 +111,10 @@ class DSB_Signature(AbstractWatermarkingScheme):
         flat_data = signed_data.flatten()
 
         for i in range(self.signature_length):
-
             if signature_bits[i] == 1:
                 # Flip the '0' (which is there) to make it a '1'
                 flat_data[i] = self._flip_bit(flat_data[i])
-
+        end = time.perf_counter()
 
         return flat_data.reshape(host_data.shape)
 
