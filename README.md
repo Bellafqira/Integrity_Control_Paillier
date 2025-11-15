@@ -101,7 +101,8 @@ Here is a complete workflow:
 First, generate your Paillier (for encryption) and ECDSA (for signature) keys.
 ```bash
 # This will create a 'my_keys' folder and save 4 key files inside it
- export PYTHONPATH="$PYTHONPATH:."; 
+ # $env:PYTHONPATH = "."; for CMD or Windows shell
+ export PYTHONPATH="$PYTHONPATH:."; # Linux
  python scripts/cli.py generate-keys --key-dir "my_keys" --paillier-bits 2048
 ```
 * `--key-dir "my_keys"`: (Optional) Specifies the folder to save the keys. Default is `keys`.
@@ -158,7 +159,7 @@ To reproduce the analysis graphs for distortion and robustness, you can use the 
 
 ```bash
 # Generates the BER vs. Noise graph (robustness)
-python scripts/eval_robustness_noise.py
+python scripts/eval_robustness_noise_majority_vote.py
 
 # Generates the Distortion vs. Delta graph
 python scripts/eval_distortion.py

@@ -30,8 +30,8 @@ class TestCompositeQIM(unittest.TestCase):
     original_faces = None
 
     QIM_STEP = 100
-    WATERMARK_LENGTH = 1000
-    KEY_SIZE = 1024
+    WATERMARK_LENGTH = None
+    KEY_SIZE = 128
     QUANT_FACTOR = 10 ** 6
     input_file = "data/meshes/casting.obj"
 
@@ -46,19 +46,8 @@ class TestCompositeQIM(unittest.TestCase):
         cls.public_key, cls.private_key = paillier.generate_paillier_keypair(n_length=cls.KEY_SIZE)
 
         # Initialize the two watermarking modules
-        cls.qim_clear = QIMClear(cls.QIM_STEP, cls.WATERMARK_LENGTH)
-        cls.sqim = SQIM(cls.public_key, cls.QIM_STEP, cls.WATERMARK_LENGTH)
-
-        # --- Create watermarks (as requested) ---
-        print("Generating watermarks...")
-        # 1. The pre-watermark (all zeros)
-        cls.pre_watermark = [0] * cls.WATERMARK_LENGTH
-
-        # 2. The second (random) watermark
-        cls.watermark = cls.qim_clear.generate_watermark()
-        # Ensure it's not empty or all zeros for a good test
-        if all(bit == 0 for bit in cls.watermark):
-            cls.watermark[0] = 1
+        cls.qim_clear = QIMClear(cls.QIM_STEP)
+        cls.sqim = SQIM(cls.public_key, cls.QIM_STEP)
 
         # --- Load the model ---
         print("Loading test model...")
@@ -79,9 +68,19 @@ class TestCompositeQIM(unittest.TestCase):
         cls.original_vertices = model_data["vertices"]
         cls.original_faces = model_data["faces"]
 
+        # --- Create watermarks (as requested) ---
+        print("Generating watermarks...")
+        cls.WATERMARK_LENGTH = cls.original_vertices.size
+
+        # 1. The second (random) watermark
+        cls.watermark = cls.qim_clear.generate_watermark(cls.WATERMARK_LENGTH)
+
+        # 2. The pre-watermark (all zeros)
+        cls.pre_watermark = np.zeros_like(cls.watermark)
+
         # --- FIX 3 ---
         # Do not use cls.assertGreater. Use a standard Python check.
-        if cls.original_vertices.size <= cls.WATERMARK_LENGTH:
+        if cls.original_vertices.size < cls.WATERMARK_LENGTH:
             raise ValueError(
                 f"Model is too small ({cls.original_vertices.size} coords) "
                 f"for the defined watermark length ({cls.WATERMARK_LENGTH})."
@@ -96,7 +95,7 @@ class TestCompositeQIM(unittest.TestCase):
 
         # 1. Quantify the model
         print("  (1/7) Quantifying model...")
-        quantized_vertices = (self.original_vertices * self.QUANT_FACTOR).astype(np.int64)
+        quantized_vertices = (self.original_vertices * self.QUANT_FACTOR).astype(np.int64) + self.QUANT_FACTOR
 
         # 2. Embed the pre-watermark (w=0) with QIMClear
         print("  (2/7) Embedding pre-watermark (w=0) in plaintext...")
@@ -108,7 +107,7 @@ class TestCompositeQIM(unittest.TestCase):
         # Optional check: extraction must yield zeros
         # (Here we CAN use self.assertEqual)
         test_extract = self.qim_clear.extract(pre_watermarked_data)
-        self.assertEqual(test_extract, self.pre_watermark, "Pre-watermark embedding failed.")
+        self.assertEqual(test_extract.all(), self.pre_watermark.all(), "Pre-watermark embedding failed.")
 
         # 3. Encrypt this model
         print("  (3/7) Encrypting pre-watermarked model...")

@@ -13,7 +13,8 @@ dependencies = [
     "ecdsa",
     "pymeshlab",
     "trimesh",
-    "phe"
+    "phe",
+    "scipy"
 ]
 
 [tool.setuptools.packages.find]

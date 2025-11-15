@@ -10,99 +10,95 @@ class QIMClear:
     - Bit 1 is mapped to ODD bin indices.
     """
 
-    def __init__(self, qim_step: int, watermark_length: int):
+    def __init__(self, qim_step: int):
         """
         Initializes the plaintext QIM scheme.
 
         Args:
             qim_step (int): The quantization step (q).
-            watermark_length (int): The number of bits in the QIM watermark.
         """
+        self.watermark_length = None
         if qim_step <= 0:
             raise ValueError("qim_step must be positive")
 
-        self.q = qim_step  # The 'q' from your formulas
+        self.delta = qim_step  # The 'delta' from the paper
 
-        self.watermark_length = watermark_length
         self.secret_key = {"qim_step": qim_step}
         print(f"QIMClear (Index Parity) initialized with q_step={qim_step}.")
 
-    def generate_watermark(self, *args, **kwargs) -> list:
+    def generate_watermark(self, watermark_length: int) -> np.ndarray:
         """
         Generates a random binary watermark.
         """
+        self.watermark_length = watermark_length
         print(f"QIMClear: Generating {self.watermark_length}-bit watermark...")
-        return list(np.random.randint(0, 2, self.watermark_length))
+        return np.random.randint(0, 2, self.watermark_length)
 
-    def embed(self, clear_data: np.array, watermark_bits: list) -> np.array:
+    import numpy as np
+
+    def embed(self, clear_data: np.ndarray, watermark_bits: np.ndarray) -> np.ndarray:
         """
-        Embeds the QIM watermark in PLAINTEXT domain using user's logic.
+        Embeds the QIM watermark in PLAINTEXT domain using index parity.
 
         Logic:
-        w_test = [x/q] % 2
-        if w_test == w:
-            x_wat = [x/q] * q
-        else:
-            x_wat = [x/q] * q + q
-        """
-        print("QIMClear: Embedding watermark (Index Parity)...")
-        watermarked_data = clear_data.copy()
-
-        # Flatten data for easy insertion
-        flat_data = watermarked_data.flatten()
-
-        for i in range(len(watermark_bits)):
-            val = flat_data[i]  # 'x'
-            bit = watermark_bits[i]  # 'w'
-
-            # 1. Calculate bin index
-            # This is your [x/q] (integer division)
-            bin_index = val // self.q
-
-            # 2. Calculate "natural" bit
-            # This is your [x/q] % 2
-            w_test = bin_index % 2
-
-            # 3. Calculate bin start
-            # This is your [x/q] * q
-            bin_start = bin_index * self.q
-
-            # 4. Apply logic
-            if w_test == bit:
-                # Bit matches. Quantize to the start of this bin.
-                flat_data[i] = bin_start + self.q//2
+            w_test = [x/delta] % 2
+            if w_test == w:
+                x_wat = [x/delta] * delta + delta/2
             else:
-                # Bit mismatch. Move to the start of the *next* bin
-                # (which will have the opposite bit parity).
-                flat_data[i] = bin_start - self.q//2
+                x_wat = [x/delta] * delta - delta/2
+        """
+        # Optional: remove or gate behind a verbose flag for speed
+        print("QIMClear: Embedding watermark (Index Parity)...")
 
-        # Reshape
-        return flat_data.reshape(watermarked_data.shape)
+        watermarked_data = clear_data.copy()
+        flat_data = watermarked_data.ravel()  # view, no extra copy
 
-    def extract(self, clear_data: np.array) -> list:
+        n_bits = len(watermark_bits)
+        if n_bits == 0:
+            return watermarked_data
+
+        if n_bits > flat_data.size:
+            raise ValueError(
+                f"Not enough samples to embed watermark: "
+                f"{n_bits} bits for {flat_data.size} values."
+            )
+
+        # Work only on the slice we actually watermark
+        target = flat_data[:n_bits]
+
+        delta = self.delta
+        half_delta = delta // 2
+
+        # Vectorized computations
+        bits = np.asarray(watermark_bits, dtype=np.int64)  # shape (n_bits)
+        bin_index = target // delta  # [x/delta]
+        w_test = bin_index & 1  # [x/delta] % 2
+        bin_start = bin_index * delta  # [x/delta] * delta
+
+        # Mask where parity matches
+        mask = (w_test == bits)
+
+        # Apply QIM rule
+        target[:] = np.where(mask,
+                             bin_start + half_delta,  # match
+                             bin_start - half_delta)  # mismatch
+
+        return watermarked_data
+
+    def extract(self, clear_data: np.ndarray) -> np.ndarray:
         """
         Extracts the QIM watermark from PLAINTEXT data.
 
         Logic:
-        w_ext = [x_wat / q] % 2
+            w_ext = (x // delta) % 2
         """
         print("QIMClear: Extracting watermark (Index Parity)...")
-        extracted_bits = []
 
-        # Flatten data for easy extraction
-        flat_data = clear_data.flatten()
+        # Flatten as a view (no copy)
+        flat = clear_data.ravel()
 
-        for i in range(self.watermark_length):
-            val = flat_data[i]  # 'x_wat'
+        # Vectorized extraction on first n elements
+        delta = self.delta
+        extracted_bits = (flat // delta) & 1  # faster than % 2
 
-            # 1. Calculate bin index
-            # This is your [x_wat / q]
-            bin_index = val // self.q
-
-            # 2. Calculate the bit
-            # This is your [x_wat / q] % 2
-            w_ext = bin_index % 2
-
-            extracted_bits.append(w_ext)
-
-        return extracted_bits
+        return extracted_bits.astype(np.uint8)

@@ -87,10 +87,10 @@ def run_evaluation():
         quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
 
         # 3. Initialize QIM and embed the watermark (once)
-        qim = QIMClear(qim_step=FIXED_DELTA, watermark_length=watermark_length)
+        qim = QIMClear(qim_step=FIXED_DELTA)
 
         print("  Generating and embedding watermark...")
-        watermark = qim.generate_watermark()
+        watermark = qim.generate_watermark(watermark_length)
         watermarked_data = qim.embed(quantized_vertices.copy(), watermark)
 
         model_ber_scores = []

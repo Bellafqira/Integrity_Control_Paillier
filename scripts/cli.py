@@ -1,21 +1,12 @@
-import os
 import argparse
 import pickle
+import time
+import os
 import numpy as np
 from phe import paillier
-import time
-
-# --- Update imports for the new structure ---
-# (Assumes you have run `pip install -e .` in the root)
-from src.integrity_ctrl.io import mesh_utils as mesh
-from src.integrity_ctrl.crypto import ecdsa_utils
-from src.integrity_ctrl.watermarking.qim import QIMClear
-from src.integrity_ctrl.watermarking.sqim import SQIM
-from src.integrity_ctrl.watermarking.dsb_signature import DSB_Signature
-from src.integrity_ctrl.watermarking.psb_watermarking import PSB_Parity
-
 
 # --- Key Management Functions ---
+
 
 def save_keys(keys: dict, key_dir: str):
     """Saves keys to separate files using pickle."""
@@ -32,7 +23,7 @@ def save_keys(keys: dict, key_dir: str):
     print(f"Keys saved in directory: {key_dir}")
 
 
-def load_keys(key_dir: str, load_private=True) -> dict:
+def load_keys(key_dir: str, load_private: bool = True) -> dict:
     """Loads the necessary keys from files."""
     keys = {}
     print(f"Loading keys from {key_dir}...")
@@ -53,36 +44,48 @@ def load_keys(key_dir: str, load_private=True) -> dict:
 
 # --- Command Handlers ---
 
+
 def handle_generate_keys(args):
     """Generates and saves all keys."""
-    print(f"Generating Paillier keys ({args.paillier_bits} bits)...")
-    start = time.time()
-    paillier_pub, paillier_priv = paillier.generate_paillier_keypair(n_length=args.paillier_bits)
-    print(f"Paillier keys generated in {time.time() - start:.2f}s")
+    from src.integrity_ctrl.crypto import ecdsa_utils  # lazy import pour module propre
 
-    start = time.time()
+    print(f"Generating Paillier keys ({args.paillier_bits} bits)...")
+    start = time.perf_counter()
+    paillier_pub, paillier_priv = paillier.generate_paillier_keypair(
+        n_length=args.paillier_bits
+    )
+    print(f"Paillier keys generated in {time.perf_counter() - start:.2f}s")
+
+    start = time.perf_counter()
     ecdsa_keys = ecdsa_utils.generate_signing_keys()
-    print(f"ECDSA keys generated in {time.time() - start:.2f}s")
+    print(f"ECDSA keys generated in {time.perf_counter() - start:.2f}s")
 
     keys = {
         "paillier_pub": paillier_pub,
         "paillier_priv": paillier_priv,
         "ecdsa_vk": ecdsa_keys['verification_key'],
-        "ecdsa_sk": ecdsa_keys['signing_key']
+        "ecdsa_sk": ecdsa_keys['signing_key'],
     }
     save_keys(keys, args.key_dir)
 
 
 def handle_embed(args):
     """Executes the full embedding (watermarking) pipeline."""
+    # imports locaux pour éviter des dépendances si juste generate-keys est utilisé
+    from src.integrity_ctrl.io import mesh_utils as mesh
+    from src.integrity_ctrl.crypto import ecdsa_utils
+    from src.integrity_ctrl.watermarking.qim import QIMClear
+    from src.integrity_ctrl.watermarking.sqim import SQIM
+    from src.integrity_ctrl.watermarking.dsb_signature import DSB_Signature
+    from src.integrity_ctrl.watermarking.psb_watermarking import PSB_Parity
+
     print(f"--- Starting embedding pipeline for {args.in_file} ---")
 
     # 1. Load keys
-    # (We need public keys and the private signing key)
     keys = load_keys(args.key_dir, load_private=True)
     paillier_pub = keys['paillier_pub']
     ecdsa_sk = keys['ecdsa_sk']
-    ecdsa_vk = keys['ecdsa_vk']  # Required for the DSB object
+    ecdsa_vk = keys['ecdsa_vk']
 
     # 2. Load 3D model
     print(f"Loading model: {args.in_file}")
@@ -93,28 +96,32 @@ def handle_embed(args):
 
     # 3. Quantize
     print(f"Quantizing with factor = {args.quant}")
-    quantized_verts = (model['vertices'] * args.quant).astype(np.int64)
+    quantized_verts = (model['vertices'] * args.quant).astype(np.int64) + args.quant
     wm_length = quantized_verts.size  # Watermark all coordinates
 
     # 4. Pre-watermark (QIM w=0 in plaintext)
     print(f"Pre-watermarking (QIM w=0, Delta={args.delta}) in plaintext...")
-    qim_clear = QIMClear(args.delta, wm_length)
-    pre_watermarked_data = qim_clear.embed(quantized_verts, [0] * wm_length)
+    qim_clear = QIMClear(args.delta)
+    zero_bits = np.zeros(wm_length, dtype=np.uint8)
+    pre_watermarked_data = qim_clear.embed(quantized_verts, zero_bits)
 
     # 5. Encrypt
     print(f"Encrypting {wm_length} coordinates...")
-    start_enc = time.time()
-    flat_data = pre_watermarked_data.flatten()
-    encrypted_data = np.array(
-        [paillier_pub.encrypt(int(c)) for c in flat_data],
-        dtype=object
-    ).reshape(pre_watermarked_data.shape)
-    print(f"Encryption finished in {(time.time() - start_enc)*1000:.3f}ms")
+    start_enc = time.perf_counter()
+    flat_data = pre_watermarked_data.ravel()
+    encrypt = paillier_pub.encrypt
+    encrypted_flat = np.empty_like(flat_data, dtype=object)
+
+    for i, c in enumerate(flat_data):
+        encrypted_flat[i] = encrypt(int(c))
+
+    encrypted_data = encrypted_flat.reshape(pre_watermarked_data.shape)
+    print(f"Encryption finished in {(time.perf_counter() - start_enc)*1000:.3f} ms")
 
     # 6. Embed the 2nd watermark (SQIM)
     print("Generating and embedding SQIM watermark (encrypted)...")
-    sqim = SQIM(paillier_pub, args.delta, wm_length)
-    qim_watermark = sqim.generate_watermark()
+    sqim = SQIM(paillier_pub, args.delta)
+    qim_watermark = sqim.generate_watermark(wm_length)
     sqim_embedded_data = sqim.embed(encrypted_data, qim_watermark)
 
     # 7. Apply the integrity layer (DSB or PSB)
@@ -126,8 +133,8 @@ def handle_embed(args):
         "sig_type": args.sig_type,
         "quant_factor": args.quant,
         "qim_step": args.delta,
-        "psb_watermark": None,  # Initialized to None
-        "signature_length": None  # Initialized to None
+        "psb_watermark": None,
+        "signature_length": None,
     }
 
     if args.sig_type == 'dsb':
@@ -140,19 +147,16 @@ def handle_embed(args):
 
         prepared_data = sig_scheme._prepare_data_for_signing(sqim_embedded_data)
         signature_bits, _ = sig_scheme.generate_watermark(prepared_data)
-        ##### Embedding time with PSB
+
         start = time.perf_counter()
         final_data = sig_scheme.embed(prepared_data, signature_bits)
-        end = time.perf_counter()
-        elapsed_ms = (end - start) * 1000
-        print(f"PSB Embedding time in ms : {elapsed_ms:.3f} ms")
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        print(f"DSB Embedding time in ms : {elapsed_ms:.3f} ms")
 
         payload_to_save["model_data"] = final_data
         payload_to_save["signature_length"] = sig_len
 
     elif args.sig_type == 'psb':
-        # Use PSB to watermark the *remaining* coordinates
-        # (e.g., DSB uses 0-511, PSB uses 512-end)
         psb_wm_length = wm_length
         if psb_wm_length <= 0:
             raise ValueError("Model is too small to combine DSB and PSB.")
@@ -160,23 +164,19 @@ def handle_embed(args):
         psb_scheme = PSB_Parity(paillier_pub, psb_wm_length)
         psb_watermark = psb_scheme.generate_watermark()
 
-        # Watermark on the already SQIM-encrypted data
         final_data = sqim_embedded_data.copy()
-        # Flatten, take the end, watermark, reshape
-        flat_final = final_data.flatten()
-        #####  Embedding by DSB
-        start = time.perf_counter()
-        watermarked_part = psb_scheme.embed(flat_final, psb_watermark)
-        end = time.perf_counter()
-        elapsed_ms = (end - start) * 1000
-        print(f"DSB Embedding time in ms : {elapsed_ms:.3f} ms")
+        flat_final = final_data.ravel()
 
-        flat_final = watermarked_part
-        final_data = flat_final.reshape(final_data.shape)
+        start = time.perf_counter()
+        watermarked_flat = psb_scheme.embed(flat_final, psb_watermark)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        print(f"PSB Embedding time in ms : {elapsed_ms:.3f} ms")
+
+        final_data = watermarked_flat.reshape(final_data.shape)
 
         payload_to_save["model_data"] = final_data
         payload_to_save["psb_watermark"] = psb_watermark
-        payload_to_save["signature_length"] = psb_wm_length  # Length of the PSB watermark
+        payload_to_save["signature_length"] = psb_wm_length
 
     # 8. Save the result
     os.makedirs(os.path.dirname(args.out_file), exist_ok=True)
@@ -189,15 +189,19 @@ def handle_embed(args):
 
 def handle_verify(args):
     """Executes the full verification pipeline."""
+    from src.integrity_ctrl.io import mesh_utils as mesh
+    from src.integrity_ctrl.watermarking.qim import QIMClear
+    from src.integrity_ctrl.watermarking.dsb_signature import DSB_Signature
+    from src.integrity_ctrl.watermarking.psb_watermarking import PSB_Parity
+
     print(f"--- Starting verification pipeline for {args.in_file} ---")
 
     # 1. Load keys
-    # (We need private keys to decrypt, and public keys to verify)
     keys = load_keys(args.key_dir, load_private=True)
     paillier_pub = keys['paillier_pub']
     paillier_priv = keys['paillier_priv']
     ecdsa_vk = keys['ecdsa_vk']
-    ecdsa_sk = keys['ecdsa_sk']  # Required by the DSB object, even for verification
+    ecdsa_sk = keys['ecdsa_sk']  # required by DSB object, even for verification
 
     # 2. Load the data file
     print(f"Loading data file: {args.in_file}")
@@ -219,21 +223,18 @@ def handle_verify(args):
 
         start = time.perf_counter()
         integrity_valid = sig_scheme.verify(model_data)
-        end = time.perf_counter()
-        elapsed_ms = (end - start)*1000
+        elapsed_ms = (time.perf_counter() - start) * 1000
         print(f"DSB verification time in ms: {elapsed_ms:.3f} ms")
 
     elif sig_type == 'psb':
         psb_wm_length = payload['signature_length']
         psb_scheme = PSB_Parity(paillier_pub, psb_wm_length)
 
-        # Extract the PSB watermark from the end of the data
-        flat_data = model_data.flatten()
+        flat_data = model_data.ravel()
 
         start = time.perf_counter()
         extracted_psb = psb_scheme.extract(flat_data)
-        end = time.perf_counter()
-        elapsed_ms = (end - start) * 1000
+        elapsed_ms = (time.perf_counter() - start) * 1000
         print(f"PSB verification time in ms: {elapsed_ms:.3f} ms")
 
         integrity_valid = (extracted_psb == payload['psb_watermark'])
@@ -243,23 +244,26 @@ def handle_verify(args):
         print("! ERROR: INTEGRITY CHECK FAILED !")
         print("! The model is corrupt or has been tampered with.")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        return  # Stop the process
+        return
 
     print("Integrity check PASSED. The model is authentic.")
 
     # 4. Decrypt
     print(f"Decrypting {wm_length} coordinates...")
-    start_dec = time.time()
-    flat_data = model_data.flatten()
-    decrypted_data = np.array(
-        [paillier_priv.decrypt(c) for c in flat_data],
-        dtype=np.int64
-    ).reshape(model_data.shape)
-    print(f"Decryption finished in {(time.time() - start_dec)*1000:.3f}ms")
+    start_dec = time.perf_counter()
+    flat_data = model_data.ravel()
+    decrypt = paillier_priv.decrypt
+    decrypted_flat = np.empty(flat_data.shape, dtype=np.int64)
+
+    for i, c in enumerate(flat_data):
+        decrypted_flat[i] = decrypt(c)
+
+    decrypted_data = decrypted_flat.reshape(model_data.shape)
+    print(f"Decryption finished in {(time.perf_counter() - start_dec)*1000:.3f} ms")
 
     # 5. Extract internal QIM watermark
     print("Extracting internal QIM watermark (plaintext)...")
-    qim_clear = QIMClear(payload['qim_step'], wm_length)
+    qim_clear = QIMClear(payload['qim_step'])
     extracted_qim = qim_clear.extract(decrypted_data)
 
     if np.array_equal(extracted_qim, payload['qim_watermark']):
@@ -269,18 +273,19 @@ def handle_verify(args):
 
     # 6. Save the decrypted model
     print(f"De-quantizing and saving decrypted model to {args.out_model}")
-    final_vertices = decrypted_data.astype(float) / payload['quant_factor']
+    final_vertices = (decrypted_data.astype(float) - payload['quant_factor']) / payload['quant_factor']
 
     mesh.save_3d_model(
         final_vertices,
         payload['faces'],
-        args.out_model
+        args.out_model,
     )
 
     print("--- Verification pipeline finished. ---")
 
 
 # --- Argument Parser Configuration (argparse) ---
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -302,8 +307,8 @@ def main():
     parser_gen.add_argument(
         '--paillier-bits',
         type=int,
-        default=1024,
-        help="Bit size for the Paillier key. (Default: 1024)"
+        default=2048,
+        help="Bit size for the Paillier key. (Default: 2048)"
     )
     parser_gen.set_defaults(func=handle_generate_keys)
 
@@ -339,7 +344,7 @@ def main():
     parser_embed.add_argument(
         '--quant',
         type=int,
-        default=1000000,
+        default=1_000_000,
         help="Quantization factor (10^6). (Default: 1000000)"
     )
     parser_embed.add_argument(
@@ -382,19 +387,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # This block allows the script to be run directly
-    # It adds the project root to the path to find the 'src' package
-    # This is a fallback in case `pip install -e .` wasn't used.
-    import sys
-    import os
-
-    # Add project root to path
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from src.integrity_ctrl.io import mesh_utils as mesh
-    from src.integrity_ctrl.crypto import ecdsa_utils
-    from src.integrity_ctrl.watermarking.qim import QIMClear
-    from src.integrity_ctrl.watermarking.sqim import SQIM
-    from src.integrity_ctrl.watermarking.dsb_signature import DSB_Signature
-    from src.integrity_ctrl.watermarking.psb_watermarking import PSB_Parity
-
     main()

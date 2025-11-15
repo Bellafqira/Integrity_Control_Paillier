@@ -3,4 +3,5 @@ matplotlib
 ecdsa
 pymeshlab
 trimesh
+scipy
 phe

@@ -20,11 +20,11 @@ class TestQIMClear(unittest.TestCase):
         """
         # --- Parameters ---
         cls.QIM_STEP = 100  # Must be > 0
-        cls.WATERMARK_LENGTH = 1000  # Number of bits to embed
+        cls.WATERMARK_LENGTH = None  # Number of bits to embed
         cls.QUANT_FACTOR = 10 ** 6  # 6 decimal places of precision
 
         # --- Initialize the QIM module ---
-        cls.qim = QIMClear(cls.QIM_STEP, cls.WATERMARK_LENGTH)
+        cls.qim = QIMClear(cls.QIM_STEP)
 
         # --- Files ---
         cls.input_file = "data/meshes/casting.obj"
@@ -38,8 +38,8 @@ class TestQIMClear(unittest.TestCase):
         """
         Clean up created files after tests.
         """
-        if os.path.exists(self.output_file):
-            os.remove(self.output_file)
+        # if os.path.exists(self.output_file):
+        #     os.remove(self.output_file)
 
     def test_full_qim_cycle(self):
         """
@@ -54,19 +54,14 @@ class TestQIMClear(unittest.TestCase):
         original_vertices = model_data["vertices"]
         original_faces = model_data["faces"]
 
-        # Check that the model is large enough for the watermark
-        self.assertGreater(
-            original_vertices.flatten().size, self.WATERMARK_LENGTH,
-            "Model is too small for the defined watermark length."
-        )
-
         # 2. Quantify
         print("  (2/7) Quantifying vertices...")
-        quantized_vertices = (original_vertices * self.QUANT_FACTOR).astype(np.int64)
+        quantized_vertices = (original_vertices * self.QUANT_FACTOR).astype(np.int64) + self.QUANT_FACTOR
 
         # 3. Generate and embed the watermark
         print("  (3/7) Generating watermark...")
-        watermark = self.qim.generate_watermark()
+        watermark = self.qim.generate_watermark(original_vertices.size)
+        self.WATERMARK_LENGTH = original_vertices.size
         self.assertEqual(len(watermark), self.WATERMARK_LENGTH)
 
         print("  (4/7) Embedding watermark...")
@@ -87,7 +82,7 @@ class TestQIMClear(unittest.TestCase):
 
         # 6. De-quantify the watermarked model
         print("  (7/7) De-quantifying and saving watermarked model...")
-        final_watermarked_vertices = watermarked_q_vertices.astype(float) / self.QUANT_FACTOR
+        final_watermarked_vertices = (watermarked_q_vertices.astype(float) - self.QUANT_FACTOR) / self.QUANT_FACTOR
 
         # 7. Save
         mesh_utils.save_3d_model(

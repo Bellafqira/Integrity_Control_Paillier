@@ -96,8 +96,8 @@ def run_evaluation():
 
         # Loop 2: Iterate over each Delta (qim_step) value
         for delta in DELTAS_TO_TEST:
-            qim = QIMClear(qim_step=delta, watermark_length=watermark_length)
-            watermark = qim.generate_watermark()
+            qim = QIMClear(qim_step=delta)
+            watermark = qim.generate_watermark(watermark_length)
             watermarked_q_vertices = qim.embed(quantized_vertices.copy(), watermark)
 
             hd_max = calculate_hausdorff_on_arrays(

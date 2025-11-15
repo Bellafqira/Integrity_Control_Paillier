@@ -2,7 +2,7 @@ import os
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
-from networkx.algorithms.bipartite.basic import color
+# from network.algorithms.bipartite.basic import color
 
 from integrity_ctrl.util.watermark_util import tile_first_block, majority_vote_block
 # Import your custom modules
@@ -90,10 +90,10 @@ def run_evaluation():
         quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
 
         # 3. Initialize QIM and embed the watermark (once)
-        qim = QIMClear(qim_step=FIXED_DELTA, watermark_length=watermark_length)
+        qim = QIMClear(qim_step=FIXED_DELTA)
 
         print("  Generating and embedding watermark...")
-        watermark = qim.generate_watermark()
+        watermark = qim.generate_watermark(watermark_length)
         # duplicate only the first 256 bits
         watermark = tile_first_block(np.array(watermark), 256)
 

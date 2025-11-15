@@ -1,69 +1,89 @@
 import numpy as np
-# Import the abstract class from your project
 from src.integrity_ctrl.watermarking.base import AbstractWatermarkingScheme
-from phe import paillier  # Uses the PHE library
+from phe import paillier
 
 
 class SQIM(AbstractWatermarkingScheme):
     """
-    Implements 'Secured QIM' (SQIM) in the ENCRYPTED domain
-    using the 'phe' library.
+    Implements 'Secured QIM' (SQIM) in the ENCRYPTED domain using the 'phe' library.
     """
 
-    def __init__(self, public_key: paillier.PaillierPublicKey, qim_step: int, watermark_length: int):
+    def __init__(self, public_key: paillier.PaillierPublicKey, qim_step: int):
         """
         Initializes the SQIM scheme.
 
         Args:
             public_key (paillier.PaillierPublicKey): The PHE public key.
-            qim_step (int): The quantization step 'q' to add.
-            watermark_length (int): The number of bits in the watermark.
+            qim_step (int): The quantization step 'delta' to add.
         """
-        # We only need the public key for encryption
+        super().__init__()
         self.public_key = public_key
-        self.q = qim_step
-        self.watermark_length = watermark_length
-        self.secret_key = {"qim_step": qim_step}
-        print(f"SQIM (Encrypted) initialized with q_step={qim_step}.")
+        self.delta = int(qim_step)
+        self.watermark_length = None
+        self.secret_key = {"qim_step": self.delta}
 
-    def generate_watermark(self, *args, **kwargs) -> list:
+        print(f"SQIM (Encrypted) initialized with q_step={self.delta}.")
+
+    def generate_watermark(self, watermark_length) -> np.ndarray:
         """
         Generates a random binary watermark.
         """
+        self.watermark_length = watermark_length
         print(f"SQIM: Generating {self.watermark_length}-bit watermark...")
-        return list(np.random.randint(0, 2, self.watermark_length))
+        # Use uint8 to be explicit, then convert to plain Python ints if needed
+        bits = np.random.randint(0, 2, size=self.watermark_length, dtype=np.uint8)
+        return bits
 
-    def embed(self, encrypted_host_data: np.array, watermark_bits: list) -> np.array:
+    def embed(self, encrypted_host_data: np.ndarray, watermark_bits: np.ndarray) -> np.ndarray:
         """
         Embeds the watermark in the ENCRYPTED domain.
 
-        Logic (as requested):
-        if w == 0: do nothing
-        if w == 1: c_new = c + q (using homomorphic addition from PHE)
+        Logic:
+            if w == 0: do nothing
+            if w == 1: c_new = c + q  (homomorphic addition)
         """
         print("SQIM: Embedding watermark in encrypted domain...")
 
-        # Copy the array to avoid modifying the original
+        # Safety checks
+        self.watermark_length = len(watermark_bits)
+
+        if len(watermark_bits) < self.watermark_length:
+            raise ValueError(
+                f"watermark_bits too short: got {len(watermark_bits)}, "
+                f"expected at least {self.watermark_length}."
+            )
+
+        # Copy the array (shallow copy of object references)
         watermarked_data = encrypted_host_data.copy()
 
-        # Flatten for easy iteration
-        flat_data = watermarked_data.flatten()
+        # ravel() -> view when possible, avoids a full copy like flatten()
+        flat_data = watermarked_data.ravel()
 
-        for i in range(self.watermark_length):
-            bit = watermark_bits[i]
+        if flat_data.size < self.watermark_length:
+            raise ValueError(
+                f"Not enough encrypted samples to embed watermark: "
+                f"need {self.watermark_length}, have {flat_data.size}."
+            )
 
-            if bit == 1:
-                # This is the magic of PHE:
-                # EncryptedNumber + plaintext_int = EncryptedNumber
-                # E(m) + q -> E(m + q)
-                flat_data[i] = flat_data[i] + self.q
+        # Convert bits to a NumPy array for efficient masking
+        bits = np.fromiter(
+            (1 if b else 0 for b in watermark_bits[:self.watermark_length]),
+            dtype=np.uint8,
+            count=self.watermark_length,
+        )
 
-            # If bit == 0, do nothing, as requested.
+        # Indices where bit == 1 → only here where additions are expensive
+        one_indices = np.nonzero(bits)[0]
 
-        # Reshape and return
-        return flat_data.reshape(watermarked_data.shape)
+        # Loop only on 1-bits
+        delta = self.delta
+        for idx in one_indices:
+            flat_data[idx] = flat_data[idx] + delta
 
-    def extract(self, watermarked_data: np.array) -> object:
+        # flat_data is a view on watermarked_data, so reshape is cheap
+        return watermarked_data.reshape(encrypted_host_data.shape)
+
+    def extract(self, watermarked_data: np.ndarray) -> object:
         """
         Extraction is not possible in the encrypted domain.
         """
@@ -72,3 +92,7 @@ class SQIM(AbstractWatermarkingScheme):
             "SQIM extraction is not possible in the encrypted domain. "
             "You must decrypt the data first, then use the 'QIMClear' class."
         )
+
+    def set_watermark(self, watermark):
+        self.secret_key["watermark"] = watermark
+        self.watermark_length = len(watermark)
