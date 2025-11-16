@@ -4,6 +4,7 @@ import time
 import os
 import numpy as np
 from phe import paillier
+from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 # --- Key Management Functions ---
 
@@ -94,15 +95,17 @@ def handle_embed(args):
         return
 
     # 3. Quantize
+    args.quant = 10**args.quant
     print(f"Quantizing with factor = {args.quant}")
-    quantized_verts = (model['vertices'] * args.quant).astype(np.int64) + args.quant
-    wm_length = quantized_verts.size  # Watermark all coordinates
+
+    quantized_vertices = quantize_vertices(model['vertices'], args.quant)
+    wm_length = quantized_vertices.size  # Watermark all coordinates
 
     # 4. Pre-watermark (QIM w=0 in plaintext)
     print(f"Pre-watermarking (QIM w=0, Delta={args.delta}) in plaintext...")
     qim_clear = QIMClear(args.delta)
     zero_bits = np.zeros(wm_length, dtype=np.uint8)
-    pre_watermarked_data = qim_clear.embed(quantized_verts, zero_bits)
+    pre_watermarked_data = qim_clear.embed(quantized_vertices, zero_bits)
 
     # 5. Encrypt
 
@@ -264,7 +267,7 @@ def handle_verify(args):
 
     # 6. Save the decrypted model
     print(f"De-quantizing and saving decrypted model to {args.out_model}")
-    final_vertices = (decrypted_data.astype(float) - payload['quant_factor']) / payload['quant_factor']
+    final_vertices = dequantize_vertices(decrypted_data.astype(float), payload['quant_factor'])
 
     mesh.save_3d_model(
         final_vertices,
@@ -335,8 +338,8 @@ def main():
     parser_embed.add_argument(
         '--quant',
         type=int,
-        default=1_000_000,
-        help="Quantization factor (10^6). (Default: 1000000)"
+        default=6,
+        help="Quantization factor (10^6). (Default: 6)"
     )
     parser_embed.add_argument(
         '--sig-type',

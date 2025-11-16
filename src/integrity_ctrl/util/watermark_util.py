@@ -48,4 +48,46 @@ def compare_bits(bits_ref, bits_est):
     acc = 1.0 - hamming / bits_ref.size
     return hamming, acc
 
+def quantize_vertices(vertices: np.ndarray, quant_factor: int) -> np.ndarray:
+    """
+    Quantizes floating-point vertices to positive integers.
 
+    This process scales the vertices and then shifts them by the
+    quantization factor to ensure all values are positive.
+
+    Formula: Q = int(V * F) + F
+
+    Args:
+        vertices (np.ndarray): The original (N, 3) array of float vertices.
+        quant_factor (int): The quantization factor (e.g., 10**6).
+
+    Returns:
+        np.ndarray: The (N, 3) array of quantized int64 vertices.
+    """
+    print(f"Quantizing vertices with factor {quant_factor}...")
+    # (vertices * quant_factor) -> scales floats
+    # .astype(np.int64) -> truncates to integer
+    # + quant_factor -> shifts all values to be positive
+    quantized_data = (vertices * quant_factor).astype(np.int64) + quant_factor
+    return quantized_data
+
+def dequantize_vertices(quantized_vertices: np.ndarray, quant_factor: int) -> np.ndarray:
+    """
+    De-quantizes integer vertices back to their original floating-point representation.
+    This is the exact inverse of the quantize_vertices function.
+
+    Formula: V = (Q - F) / F
+
+    Args:
+        quantized_vertices (np.ndarray): The (N, 3) array of quantized int64 vertices.
+        quant_factor (int): The same quantization factor used during quantization.
+
+    Returns:
+        np.ndarray: The (N, 3) array of de-quantized float vertices.
+    """
+    print(f"De-quantizing vertices with factor {quant_factor}...")
+    # (quantized_vertices - quant_factor) -> shifts values back (can be negative)
+    # .astype(float) -> ensures float division
+    # / quant_factor -> scales values back to original range
+    dequantized_data = (quantized_vertices - quant_factor).astype(float) / quant_factor
+    return dequantized_data

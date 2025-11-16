@@ -5,6 +5,7 @@ import numpy as np
 # Import from your project package (assumes `pip install -e .`)
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear  # Import our plaintext QIM class
+from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 
 class TestQIMClear(unittest.TestCase):
@@ -56,7 +57,7 @@ class TestQIMClear(unittest.TestCase):
 
         # 2. Quantify
         print("  (2/7) Quantifying vertices...")
-        quantized_vertices = (original_vertices * self.QUANT_FACTOR).astype(np.int64) + self.QUANT_FACTOR
+        quantized_vertices = quantize_vertices(original_vertices, self.QUANT_FACTOR)
 
         # 3. Generate and embed the watermark
         print("  (3/7) Generating watermark...")
@@ -82,7 +83,7 @@ class TestQIMClear(unittest.TestCase):
 
         # 6. De-quantify the watermarked model
         print("  (7/7) De-quantifying and saving watermarked model...")
-        final_watermarked_vertices = (watermarked_q_vertices.astype(float) - self.QUANT_FACTOR) / self.QUANT_FACTOR
+        final_watermarked_vertices = dequantize_vertices(watermarked_q_vertices.astype(float), self.QUANT_FACTOR)
 
         # 7. Save
         mesh_utils.save_3d_model(

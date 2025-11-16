@@ -9,6 +9,7 @@ from phe import paillier
 
 # Import from your project package (assumes `pip install -e .`)
 from src.integrity_ctrl.io import mesh_utils
+from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 
 class TestPheCrypto(unittest.TestCase):
@@ -61,7 +62,7 @@ class TestPheCrypto(unittest.TestCase):
         Tests that float vertices can be correctly converted to integers.
         """
         print("[Test PHE Crypto] Running: test_01_quantization")
-        quantized_sample = (self.sample_vertices * self.quant_factor).astype(np.int64)
+        quantized_sample = quantize_vertices(self.sample_vertices, self.quant_factor)
         self.assertEqual(quantized_sample.shape, self.sample_vertices.shape)
         self.assertNotIsInstance(quantized_sample[0, 0], float)
         # Note: numpy scalars are not base python types
@@ -75,7 +76,7 @@ class TestPheCrypto(unittest.TestCase):
         print("[Test PHE Crypto] Running: test_02_encrypt_decrypt_cycle")
 
         # 1. Prepare data (quantize)
-        quantized_data = (self.sample_vertices * self.quant_factor).astype(np.int64)
+        quantized_data = quantize_vertices(self.sample_vertices, self.quant_factor)
 
         # 2. Encrypt
         print("  Encrypting sample...")
@@ -123,7 +124,7 @@ class TestPheCrypto(unittest.TestCase):
         print("[Test PHE Crypto] Running: test_04_save_load_encrypted_model")
 
         # 1. Prepare and encrypt data (as in test_02)
-        quantized_data = (self.sample_vertices * self.quant_factor).astype(np.int64)
+        quantized_data = quantize_vertices(self.sample_vertices, self.quant_factor)
         flat_data = quantized_data.flatten()
         encrypted_data = np.array(
             [self.public_key.encrypt(int(c)) for c in flat_data], # Cast to int
@@ -191,7 +192,7 @@ class TestPheCrypto(unittest.TestCase):
         print("[Test PHE Crypto] Running: test_05_save_encrypted_model_obj")
 
         # 1. Prepare and encrypt data (as in test_02)
-        quantized_data = (self.sample_vertices * self.quant_factor).astype(np.int64)
+        quantized_data = quantize_vertices(self.sample_vertices, self.quant_factor)
         flat_data = quantized_data.flatten()
         encrypted_data = np.array(
             [self.public_key.encrypt(int(c)) for c in flat_data],

@@ -12,9 +12,9 @@ run() {
 
 run "python scripts/cli.py generate-keys --key-dir 'my_keys_2048' --paillier-bits 2048"
 
-run "python scripts/cli.py embed --in-file 'data/meshes/casting.obj' --out-file 'outputs/models/casting_signed_2048_dsb.pkl' --key-dir 'my_keys_2048' --delta 4 --quant 1000000 --sig-type dsb"
+run "python scripts/cli.py embed --in-file 'data/meshes/casting.obj' --out-file 'outputs/models/casting_signed_2048_dsb.pkl' --key-dir 'my_keys_2048' --delta 4 --quant 6 --sig-type dsb"
 
-run "python scripts/cli.py embed --in-file 'data/meshes/casting.obj' --out-file 'outputs/models/casting_signed_2048_psb.pkl' --key-dir 'my_keys_2048' --delta 4 --quant 1000000 --sig-type psb"
+run "python scripts/cli.py embed --in-file 'data/meshes/casting.obj' --out-file 'outputs/models/casting_signed_2048_psb.pkl' --key-dir 'my_keys_2048' --delta 4 --quant 6 --sig-type psb"
 
 run "python scripts/cli.py verify --in-file 'outputs/models/casting_signed_2048_psb.pkl' --out-model 'outputs/models/casting_decrypted_verified_psb.obj' --key-dir 'my_keys_2048'"
 

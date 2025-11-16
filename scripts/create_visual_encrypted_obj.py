@@ -1,7 +1,10 @@
 import numpy as np
 from phe import paillier
-from src.integrity_ctrl.io import mesh_utils # Updated import
 import time
+
+from src.integrity_ctrl.io import mesh_utils # Updated import
+from src.integrity_ctrl.util.watermark_util import quantize_vertices
+
 
 # --- Configuration ---
 KEY_SIZE = 128  # Paillier key size
@@ -25,7 +28,7 @@ print(f"Keys generated in {time.time() - start_key:.2f}s")
 
 # --- 2. Quantization and Encryption ---
 print("Quantizing vertices...")
-quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
+quantized_vertices = quantize_vertices(original_vertices, QUANT_FACTOR)
 
 print("Encrypting vertices (this can be long)...")
 start_enc = time.time()

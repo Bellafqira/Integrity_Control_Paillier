@@ -8,6 +8,7 @@ import pymeshlab
 # This import path assumes you are running from the project root directory
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear
+from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 # --- Evaluation Parameters ---
 DELTAS_TO_TEST = [2, 4, 6, 8, 10, 20, 30]
@@ -85,7 +86,8 @@ def run_evaluation():
 
         original_vertices = model_data["vertices"]
         original_faces = model_data["faces"]
-        quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
+        quantized_vertices = quantize_vertices(original_vertices, QUANT_FACTOR)
+
         watermark_length = original_vertices.size
 
         if watermark_length == 0:
@@ -101,8 +103,8 @@ def run_evaluation():
             watermarked_q_vertices = qim.embed(quantized_vertices.copy(), watermark)
 
             hd_max = calculate_hausdorff_on_arrays(
-                watermarked_q_vertices / QUANT_FACTOR,  # Index 0 (sampledmesh) - De-quantized
-                quantized_vertices / QUANT_FACTOR,    # Index 1 (targetmesh) - De-quantized
+                dequantize_vertices(watermarked_q_vertices, QUANT_FACTOR),  # Index 0 (sampledmesh) - De-quantized
+                dequantize_vertices(quantized_vertices, QUANT_FACTOR),    # Index 1 (targetmesh) - De-quantized
                 original_faces,
                 ms
             )

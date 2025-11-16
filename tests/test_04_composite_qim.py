@@ -7,6 +7,7 @@ from phe import paillier
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear  # Plaintext extraction/embedding module
 from src.integrity_ctrl.watermarking.sqim import SQIM  # Encrypted embedding module
+from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 
 class TestCompositeQIM(unittest.TestCase):
@@ -95,7 +96,7 @@ class TestCompositeQIM(unittest.TestCase):
 
         # 1. Quantify the model
         print("  (1/7) Quantifying model...")
-        quantized_vertices = (self.original_vertices * self.QUANT_FACTOR).astype(np.int64) + self.QUANT_FACTOR
+        quantized_vertices = quantize_vertices(self.original_vertices, self.QUANT_FACTOR)
 
         # 2. Embed the pre-watermark (w=0) with QIMClear
         print("  (2/7) Embedding pre-watermark (w=0) in plaintext...")

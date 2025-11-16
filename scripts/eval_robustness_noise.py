@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 # Import your custom modules
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear  # Plaintext QIM test
+from src.integrity_ctrl.util.watermark_util import quantize_vertices
 
 # --- Evaluation Parameters ---
 
@@ -84,7 +85,7 @@ def run_evaluation():
         print(f"  Model size: {original_vertices.shape}")
         print(f"  Watermark size: {watermark_length} bits")
 
-        quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
+        quantized_vertices = quantize_vertices(original_vertices, QUANT_FACTOR)
 
         # 3. Initialize QIM and embed the watermark (once)
         qim = QIMClear(qim_step=FIXED_DELTA)

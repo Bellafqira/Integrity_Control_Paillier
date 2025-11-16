@@ -2,12 +2,12 @@ import os
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
-# from network.algorithms.bipartite.basic import color
 
-from integrity_ctrl.util.watermark_util import tile_first_block, majority_vote_block
 # Import your custom modules
 from src.integrity_ctrl.io import mesh_utils
 from src.integrity_ctrl.watermarking.qim import QIMClear  # Plaintext QIM test
+from src.integrity_ctrl.util.watermark_util import quantize_vertices
+from integrity_ctrl.util.watermark_util import tile_first_block, majority_vote_block
 
 # --- Evaluation Parameters ---
 
@@ -79,7 +79,7 @@ def run_evaluation():
         # 2. Calculate watermark size (as requested)
         # We use the maximum capacity: number of coordinates
         watermark_length = original_vertices.flatten().size
-        print("hhhhhhhhhhhhhheeeeeeeeeeeeere", original_vertices.shape)
+
         if watermark_length == 0:
             print("  -> Model has no vertices. Skipping.")
             continue
@@ -87,7 +87,7 @@ def run_evaluation():
         print(f"  Model size: {original_vertices.shape}")
         print(f"  Watermark size: {watermark_length} bits")
 
-        quantized_vertices = (original_vertices * QUANT_FACTOR).astype(np.int64)
+        quantized_vertices = quantize_vertices(original_vertices, QUANT_FACTOR)
 
         # 3. Initialize QIM and embed the watermark (once)
         qim = QIMClear(qim_step=FIXED_DELTA)
