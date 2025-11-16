@@ -10,7 +10,7 @@ def bytes_to_bits(byte_data: bytes) -> np.ndarray:
     # Unpacker les bits efficacement
     return np.unpackbits(byte_array)
 
-def bits_to_bytes(bit_array: np.ndarray) -> bytes:
+def bits_to_bytes(bit_array: list[int]) -> bytes:
     """Ultra-rapide avec NumPy"""
     # Padding si nécessaire
     remainder = len(bit_array) % 8

@@ -77,8 +77,9 @@ class SQIM(AbstractWatermarkingScheme):
 
         # Loop only on 1-bits
         delta = self.delta
+        delta_enc = (1+delta*self.public_key.n)%self.public_key.nsquare
         for idx in one_indices:
-            flat_data[idx] = flat_data[idx] + delta
+            flat_data[idx] = (flat_data[idx]*delta_enc)%self.public_key.nsquare
 
         # flat_data is a view on watermarked_data, so reshape is cheap
         return watermarked_data.reshape(encrypted_host_data.shape)

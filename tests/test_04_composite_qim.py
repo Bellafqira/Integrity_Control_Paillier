@@ -1,7 +1,7 @@
 import unittest
 import os
 import numpy as np
-from phe import paillier
+from phe import paillier, EncryptedNumber
 
 # Import from your project package (assumes `pip install -e .`)
 from src.integrity_ctrl.io import mesh_utils
@@ -116,7 +116,7 @@ class TestCompositeQIM(unittest.TestCase):
         flat_data_to_encrypt = pre_watermarked_data.flatten()[:self.WATERMARK_LENGTH]
 
         encrypted_data = np.array(
-            [self.public_key.encrypt(int(c)) for c in flat_data_to_encrypt],
+            [self.public_key.encrypt(int(c)).ciphertext(be_secure=False) for c in flat_data_to_encrypt],
             dtype=object
         )
 
@@ -127,7 +127,7 @@ class TestCompositeQIM(unittest.TestCase):
         # 5. Decrypt the final model
         print("  (5/7) Decrypting final model...")
         decrypted_data = np.array(
-            [self.private_key.decrypt(c) for c in final_encrypted_data],
+            [self.private_key.decrypt(EncryptedNumber(self.public_key, c, 0)) for c in final_encrypted_data],
             dtype=np.int64
         )
 

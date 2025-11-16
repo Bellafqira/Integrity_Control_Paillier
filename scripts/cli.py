@@ -4,6 +4,8 @@ import time
 import os
 import numpy as np
 from phe import paillier
+from phe.paillier import EncryptedNumber
+
 from src.integrity_ctrl.util.watermark_util import quantize_vertices, dequantize_vertices
 
 # --- Key Management Functions ---
@@ -108,11 +110,10 @@ def handle_embed(args):
     pre_watermarked_data = qim_clear.embed(quantized_vertices, zero_bits)
 
     # 5. Encrypt
-
     flat_data = pre_watermarked_data.ravel()
     print(f"Encrypting {wm_length} coordinates...")
     start_enc = time.perf_counter()
-    encrypted_flat = np.array([paillier_pub.encrypt(int(c)) for c in flat_data])
+    encrypted_flat = np.array([paillier_pub.encrypt(int(c)).ciphertext(be_secure=False) for c in flat_data])
     print(f"Encryption finished in {(time.perf_counter() - start_enc)*1000:.3f} ms")
 
     encrypted_data = encrypted_flat.reshape(pre_watermarked_data.shape)
@@ -251,7 +252,10 @@ def handle_verify(args):
 
     start_dec = time.perf_counter()
     for i, c in enumerate(flat_data):
-        decrypted_flat[i] = decrypt(c)
+        c_restored = EncryptedNumber(paillier_pub, c, 0)  # exponent = 0 pour un entier
+        decrypted_flat[i] = decrypt(c_restored)
+
+
     print(f"Decryption finished in {(time.perf_counter() - start_dec)*1000:.3f} ms")
     decrypted_data = decrypted_flat.reshape(model_data.shape)
 

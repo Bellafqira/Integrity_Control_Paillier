@@ -68,7 +68,7 @@ def quantize_vertices(vertices: np.ndarray, quant_factor: int) -> np.ndarray:
     # (vertices * quant_factor) -> scales floats
     # .astype(np.int64) -> truncates to integer
     # + quant_factor -> shifts all values to be positive
-    quantized_data = (vertices * quant_factor).astype(np.int64) + quant_factor
+    quantized_data = (vertices * quant_factor).astype(np.int64)
     return quantized_data
 
 def dequantize_vertices(quantized_vertices: np.ndarray, quant_factor: int) -> np.ndarray:
@@ -89,5 +89,5 @@ def dequantize_vertices(quantized_vertices: np.ndarray, quant_factor: int) -> np
     # (quantized_vertices - quant_factor) -> shifts values back (can be negative)
     # .astype(float) -> ensures float division
     # / quant_factor -> scales values back to original range
-    dequantized_data = (quantized_vertices - quant_factor).astype(float) / quant_factor
+    dequantized_data = quantized_vertices.astype(float) / quant_factor
     return dequantized_data

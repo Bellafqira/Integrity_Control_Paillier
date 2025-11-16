@@ -32,7 +32,7 @@ class TestPSBParity(unittest.TestCase):
         cls.original_data = np.random.randint(0, 1000, size=cls.WATERMARK_LENGTH)
 
         cls.encrypted_data = np.array(
-            [cls.public_key.encrypt(int(c)) for c in cls.original_data],
+            [cls.public_key.encrypt(int(c)).ciphertext(be_secure=False) for c in cls.original_data],
             dtype=object
         )
 
@@ -83,10 +83,6 @@ class TestPSBParity(unittest.TestCase):
             self.encrypted_data.copy(),
             watermark_ones
         )
-
-        # Compare the ciphertexts (as text)
-        c_original = self.encrypted_data[0].ciphertext(be_secure=False)
-        c_watermarked = watermarked_data[0].ciphertext(be_secure=False)
 
         # This is a statistical test; it might fail if
         # c_original was already odd.

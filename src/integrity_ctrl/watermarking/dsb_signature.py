@@ -1,9 +1,5 @@
-import pickle
-import time
-
 import numpy as np
 import hashlib
-from typing import Sequence
 from phe import paillier
 
 from src.integrity_ctrl.watermarking.base import AbstractWatermarkingScheme
@@ -30,8 +26,8 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
         # --- The "Flipper" Trick ---
         # c + E(0, r=-1) == -c mod N^2
-        print("DSB: Pre-computing the flipper E(0, r=-1)...")
-        self.flipper = self.public_key.encrypt(0, r_value=-1)
+        # print("DSB: Pre-computing the flipper E(0, r=-1)...")
+        # self.flipper = self.public_key.encrypt(0, r_value=-1)
 
         # Threshold for reading a bit (N^2 / 2)
         self.threshold = self.public_key.nsquare // 2
@@ -40,13 +36,13 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
     # --- Low-level functions (DSB) ---
 
-    def _get_bit(self, c: paillier.EncryptedNumber) -> int:
+    def _get_bit(self, c) -> int:
         """Reads the 'natural' bit of a ciphertext (0 or 1)."""
-        return 1 if c.ciphertext(be_secure=False) > self.threshold else 0
+        return 1 if c > self.threshold else 0
 
-    def _flip_bit(self, c: paillier.EncryptedNumber) -> paillier.EncryptedNumber:
+    def _flip_bit(self, c) :
         """Flips the bit of a ciphertext (E(m) -> E(-m))."""
-        return c + self.flipper
+        return -c % self.public_key.nsquare
 
     @staticmethod
     def _hash_model(encrypted_data: np.ndarray) -> bytes:
@@ -55,8 +51,7 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
         We keep the same logic : hash(str(ciphertext)).
         """
-        hasher = hashlib.sha256(pickle.dumps([c.ciphertext(be_secure=False) for c in encrypted_data.ravel()])).digest()
-        return hasher
+        return hashlib.sha256(np.array2string(encrypted_data).encode('utf-8')).digest()
 
     # --- Pipeline Implementation ---
 
@@ -68,17 +63,14 @@ class DSB_Signature(AbstractWatermarkingScheme):
         print("DSB: Preparing data (inserting '0's)...")
         prepared_data = encrypted_data.copy()
         flat_data = prepared_data.ravel()
-        n = min(self.signature_length, flat_data.size)
-        get_bit = self._get_bit
-        flip_bit = self._flip_bit
 
-        for i in range(n):
-            if get_bit(flat_data[i]) == 1:
-                flat_data[i] = flip_bit(flat_data[i])
+        for i in range(self.signature_length):
+            if self._get_bit(flat_data[i]) == 1:
+                flat_data[i] = self._flip_bit(flat_data[i])
 
         return prepared_data.reshape(encrypted_data.shape)
 
-    def generate_watermark(self, data_to_sign: np.ndarray) -> tuple[list[int], bytes]:
+    def generate_watermark(self, data_to_sign: np.ndarray) -> tuple[np.ndarray, bytes]:
         """
         Calculates the signature (hash + signature) and returns it
         as bits and bytes.
@@ -101,43 +93,31 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
         return signature_bits[: self.signature_length], signature_bytes
 
-    def embed(self, host_data: np.ndarray, signature_bits: Sequence[int]) -> np.ndarray:
+    def embed(self, host_data: np.ndarray, signature_bits: np.ndarray) -> np.ndarray:
         """
         Embeds the signature (list of bits) into the "prepared" host data.
         """
         print("DSB: Embedding signature...")
-        signed_data = host_data.copy()
-        flat_data = signed_data.ravel()
-
-        n = min(self.signature_length, flat_data.size)
-
-        if len(signature_bits) < n:
-            raise ValueError(
-                f"signature_bits too short: got {len(signature_bits)}, "
-                f"expected at least {n}."
-            )
-
-        flip_bit = self._flip_bit
+        # signed_data = host_data.copy()
+        flat_data = host_data.ravel()
 
         # Indices of bits set to 1: we avoid an if statement in the loop
-        one_indices = [i for i, b in enumerate(signature_bits[:n]) if b]
+        one_indices =  np.where(signature_bits[:self.signature_length] == 1)[0]
 
         for i in one_indices:
-            flat_data[i] = flip_bit(flat_data[i])
+            flat_data[i] = self._flip_bit(flat_data[i])
 
-        return signed_data.reshape(host_data.shape)
+        return flat_data.reshape(host_data.shape)
 
     def extract(self, watermarked_data: np.ndarray) -> list[int]:
         """
         Extracts the signature (list of bits) from the encrypted model.
         """
         print("DSB: Extracting signature...")
-        flat_data = watermarked_data.ravel()
-        n = min(self.signature_length, flat_data.size)
-        get_bit = self._get_bit
+        flat_data = watermarked_data.ravel()[: self.signature_length]
 
         # List comprehension faster than append in a loop
-        return [get_bit(flat_data[i]) for i in range(n)]
+        return [self._get_bit(c) for c in flat_data]
 
     def verify(self, watermarked_data: np.ndarray) -> bool:
         """

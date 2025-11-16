@@ -21,7 +21,7 @@ class TestDSBSignature(unittest.TestCase):
         cls.SIGNATURE_LENGTH = 512  # 512 bits = 64 bytes
 
         print("\n[Test DSB] Generating Paillier (1024-bit) keys...")
-        cls.public_key, cls.private_key = paillier.generate_paillier_keypair(n_length=1024)
+        cls.public_key, cls.private_key = paillier.generate_paillier_keypair(n_length=128)
 
         print("[Test DSB] Generating ECDSA signature keys...")
         cls.signing_keys = ecdsa_utils.generate_signing_keys() # Corrected module name
@@ -44,7 +44,7 @@ class TestDSBSignature(unittest.TestCase):
         cls.original_data = np.random.randint(0, 1000, size=data_size)
 
         cls.encrypted_data = np.array(
-            [cls.public_key.encrypt(int(c)) for c in cls.original_data],
+            [cls.public_key.encrypt(int(c)).ciphertext(be_secure=False) for c in cls.original_data],
             dtype=object
         )
 

@@ -33,10 +33,10 @@ class PSB_Parity(AbstractWatermarkingScheme):
         print(f"PSB_Parity (LSB) initialized (length={self.watermark_length} bits).")
 
     @staticmethod
-    def _get_parity(c: paillier.EncryptedNumber) -> int:
+    def _get_parity(c) -> int:
         """Reads the LSB parity (0 or 1) of the ciphertext."""
         # Pre-binding of ciphertext is possible elsewhere, but here we keep it simple.
-        return c.ciphertext(be_secure=False) & 1  # & 1 faster than % 2
+        return c & 1  # & 1 faster than % 2
 
     def generate_watermark(self, *args, **kwargs) -> list[int]:
         """Generates a random binary watermark."""
@@ -77,7 +77,7 @@ class PSB_Parity(AbstractWatermarkingScheme):
             while current_bit != target_bit and trials < max_trials:
                 # E(0, r) have ~50% chance to change the parity
                 c_random = encrypt_zero(0)
-                current_c = current_c + c_random
+                current_c = (current_c * c_random.ciphertext())%self.public_key.nsquare
                 current_bit = get_parity(current_c)
                 trials += 1
 
