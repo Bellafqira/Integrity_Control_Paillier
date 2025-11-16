@@ -60,7 +60,9 @@ Integrity_Control_Paillier/
 │   └── ...                 # Unit tests
 ├── .gitignore
 ├── pyproject.toml          # Project configuration
-└── requirements.txt
+├── requirements.txt
+└── run_all.sh
+
 ```
 ## Installation & Setup
 
@@ -146,19 +148,19 @@ Next, take an `.obj` model, apply the full watermarking  and integrity pipeline,
 
 **Command:**
 ```bash
-python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_dsb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 1000000 --sig-type dsb
+python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_dsb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 6 --sig-type dsb
 ```
 
 * `--in-file`: (Required) The original `.obj` model to protect.
 * `--out-file`:  (Required) The output `.pkl` file that will contain the encrypted data.
 * `--key-dir`: The folder containing your keys (from Step 1).
 * `--delta`: The QIM quantization step.
-* `--quant`: The quantization factor for floats (e.g., `1000000` for 6 decimal places).
+* `--quant`: The quantization factor for floats (e.g., `6` for 6 decimal places).
 * `--sig-type`: `dsb` (recommended) or `psb`.
 
 Example (PSB integrity):
 ```bash
-python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_psb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 1000000 --sig-type psb
+python scripts/cli.py embed --in-file "data/meshes/casting.obj" --out-file "outputs/models/casting_signed_2048_psb.pkl" --key-dir "my_keys_2048" --delta 100 --quant 6 --sig-type psb
 ```
 
 
