@@ -54,11 +54,11 @@ def handle_generate_keys(args):
     paillier_pub, paillier_priv = paillier.generate_paillier_keypair(
         n_length=args.paillier_bits
     )
-    print(f"Paillier keys generated in {time.perf_counter() - start:.2f}s")
+    print(f"Paillier keys generated in {(time.perf_counter() - start)*1000:.3f}ms")
 
     start = time.perf_counter()
     ecdsa_keys = ecdsa_utils.generate_signing_keys()
-    print(f"ECDSA keys generated in {time.perf_counter() - start:.2f}s")
+    print(f"ECDSA keys generated in {(time.perf_counter() - start)*1000:.3f}ms")
 
     keys = {
         "paillier_pub": paillier_pub,
@@ -71,9 +71,8 @@ def handle_generate_keys(args):
 
 def handle_embed(args):
     """Executes the full embedding (watermarking) pipeline."""
-    # imports locaux pour éviter des dépendances si juste generate-keys est utilisé
+    # local imports to avoid dependencies if only generate-keys is used
     from src.integrity_ctrl.io import mesh_utils as mesh
-    from src.integrity_ctrl.crypto import ecdsa_utils
     from src.integrity_ctrl.watermarking.qim import QIMClear
     from src.integrity_ctrl.watermarking.sqim import SQIM
     from src.integrity_ctrl.watermarking.dsb_signature import DSB_Signature
@@ -106,17 +105,14 @@ def handle_embed(args):
     pre_watermarked_data = qim_clear.embed(quantized_verts, zero_bits)
 
     # 5. Encrypt
+
+    flat_data = pre_watermarked_data.ravel()
     print(f"Encrypting {wm_length} coordinates...")
     start_enc = time.perf_counter()
-    flat_data = pre_watermarked_data.ravel()
-    encrypt = paillier_pub.encrypt
-    encrypted_flat = np.empty_like(flat_data, dtype=object)
-
-    for i, c in enumerate(flat_data):
-        encrypted_flat[i] = encrypt(int(c))
+    encrypted_flat = np.array([paillier_pub.encrypt(int(c)) for c in flat_data])
+    print(f"Encryption finished in {(time.perf_counter() - start_enc)*1000:.3f} ms")
 
     encrypted_data = encrypted_flat.reshape(pre_watermarked_data.shape)
-    print(f"Encryption finished in {(time.perf_counter() - start_enc)*1000:.3f} ms")
 
     # 6. Embed the 2nd watermark (SQIM)
     print("Generating and embedding SQIM watermark (encrypted)...")
@@ -145,13 +141,12 @@ def handle_embed(args):
         dsb_keys = {"signing_key": ecdsa_sk, "verification_key": ecdsa_vk}
         sig_scheme = DSB_Signature(paillier_pub, dsb_keys, sig_len)
 
-        prepared_data = sig_scheme._prepare_data_for_signing(sqim_embedded_data)
-        signature_bits, _ = sig_scheme.generate_watermark(prepared_data)
-
         start = time.perf_counter()
+        prepared_data = sig_scheme.prepare_data_for_signing(sqim_embedded_data)
+        signature_bits, _ = sig_scheme.generate_watermark(prepared_data)
         final_data = sig_scheme.embed(prepared_data, signature_bits)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"DSB Embedding time in ms : {elapsed_ms:.3f} ms")
+
+        print(f"DSB Embedding time in ms : {(time.perf_counter() - start) * 1000:.3f} ms")
 
         payload_to_save["model_data"] = final_data
         payload_to_save["signature_length"] = sig_len
@@ -169,8 +164,8 @@ def handle_embed(args):
 
         start = time.perf_counter()
         watermarked_flat = psb_scheme.embed(flat_final, psb_watermark)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"PSB Embedding time in ms : {elapsed_ms:.3f} ms")
+
+        print(f"PSB Embedding time in ms : {(time.perf_counter() - start) * 1000:.3f} ms")
 
         final_data = watermarked_flat.reshape(final_data.shape)
 
@@ -223,21 +218,17 @@ def handle_verify(args):
 
         start = time.perf_counter()
         integrity_valid = sig_scheme.verify(model_data)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"DSB verification time in ms: {elapsed_ms:.3f} ms")
+        print(f"DSB verification time in ms: {(time.perf_counter() - start) * 1000:.3f} ms")
 
     elif sig_type == 'psb':
         psb_wm_length = payload['signature_length']
         psb_scheme = PSB_Parity(paillier_pub, psb_wm_length)
-
         flat_data = model_data.ravel()
 
         start = time.perf_counter()
         extracted_psb = psb_scheme.extract(flat_data)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"PSB verification time in ms: {elapsed_ms:.3f} ms")
-
         integrity_valid = (extracted_psb == payload['psb_watermark'])
+        print(f"PSB verification time in ms: {(time.perf_counter() - start) * 1000:.3f} ms")
 
     if not integrity_valid:
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -250,16 +241,16 @@ def handle_verify(args):
 
     # 4. Decrypt
     print(f"Decrypting {wm_length} coordinates...")
-    start_dec = time.perf_counter()
+
     flat_data = model_data.ravel()
     decrypt = paillier_priv.decrypt
     decrypted_flat = np.empty(flat_data.shape, dtype=np.int64)
 
+    start_dec = time.perf_counter()
     for i, c in enumerate(flat_data):
         decrypted_flat[i] = decrypt(c)
-
-    decrypted_data = decrypted_flat.reshape(model_data.shape)
     print(f"Decryption finished in {(time.perf_counter() - start_dec)*1000:.3f} ms")
+    decrypted_data = decrypted_flat.reshape(model_data.shape)
 
     # 5. Extract internal QIM watermark
     print("Extracting internal QIM watermark (plaintext)...")

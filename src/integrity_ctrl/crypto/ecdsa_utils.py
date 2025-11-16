@@ -1,30 +1,23 @@
 import ecdsa  # Ensure ecdsa is installed
+import numpy as np
 
 # --- Bit Conversion Functions ---
 
-def bytes_to_bits(byte_data: bytes) -> list:
-    """ Converts bytes into a list of bits (0s and 1s). """
-    bits = []
-    for byte in byte_data:
-        for i in range(8):
-            bits.append((byte >> (7 - i)) & 1)
-    return bits
+def bytes_to_bits(byte_data: bytes) -> np.ndarray:
+    """Ultra-rapide avec NumPy"""
+    # Convertir bytes en array numpy
+    byte_array = np.frombuffer(byte_data, dtype=np.uint8)
+    # Unpacker les bits efficacement
+    return np.unpackbits(byte_array)
 
-
-def bits_to_bytes(bit_list: list) -> bytes:
-    """ Converts a list of bits into bytes. """
-    byte_array = bytearray()
-    for i in range(0, len(bit_list), 8):
-        byte_chunk = bit_list[i:i + 8]
-        # Ensure the chunk is complete (pad with 0s if needed)
-        if len(byte_chunk) < 8:
-            byte_chunk += [0] * (8 - len(byte_chunk))
-
-        byte = 0
-        for bit in byte_chunk:
-            byte = (byte << 1) | bit
-        byte_array.append(byte)
-    return bytes(byte_array)
+def bits_to_bytes(bit_array: np.ndarray) -> bytes:
+    """Ultra-rapide avec NumPy"""
+    # Padding si nécessaire
+    remainder = len(bit_array) % 8
+    if remainder:
+        bit_array = np.pad(bit_array, (0, 8 - remainder), constant_values=0)
+    # Packer les bits
+    return np.packbits(bit_array).tobytes()
 
 
 # --- ECDSA Signature Functions ---
@@ -41,12 +34,12 @@ def generate_signing_keys() -> dict:
 def generate_signature(data_hash: bytes, sk: ecdsa.SigningKey) -> bytes:
     """ Signs a hash with the ECDSA private key. """
     # Returns a 64-byte signature (R+S)
-    return sk.sign_digest(data_hash)
+    return sk.sign(data_hash)
 
 
 def verify_signature(data_hash: bytes, signature_bytes: bytes, vk: ecdsa.VerifyingKey) -> bool:
     """ Verifies an ECDSA signature with the public key. """
     try:
-        return vk.verify_digest(signature_bytes, data_hash)
+        return vk.verify(signature_bytes, data_hash)
     except ecdsa.BadSignatureError:
         return False

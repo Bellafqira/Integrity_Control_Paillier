@@ -48,18 +48,4 @@ def compare_bits(bits_ref, bits_est):
     acc = 1.0 - hamming / bits_ref.size
     return hamming, acc
 
-# # --- Example usage ---
-# # `watermak` : your NumPy vector
-# # 1) Duplicate the first 256 values to fill the vector
-# replicated = tile_first_block(watermak, block_size=256)
-#
-# # 2) Perform majority vote to recover estimated bits
-# voted_bits = majority_vote_block(watermak, block_size=256, codebook=(0,1), threshold=0.5)
-#
-# # 3) Binarize the first block (ground truth bits)
-# orig_bits = binarize_first_block(watermak, block_size=256, codebook=(0,1), threshold=0.5)
-#
-# # 4) Compare
-# hamming, acc = compare_bits(orig_bits, voted_bits)
-# print(f"Hamming distance : {hamming} / 256")
-# print(f"Accuracy         : {acc:.4f}")
+

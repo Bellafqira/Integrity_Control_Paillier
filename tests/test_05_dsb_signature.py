@@ -55,7 +55,7 @@ class TestDSBSignature(unittest.TestCase):
         print("\n[Test DSB] Running: test_full_signature_pipeline")
 
         # 1. Prepare data (insert '0's)
-        prepared_data = self.dsb._prepare_data_for_signing(self.encrypted_data)
+        prepared_data = self.dsb.prepare_data_for_signing(self.encrypted_data)
 
         # 2. Generate the signature from the prepared data
         signature_bits, _ = self.dsb.generate_watermark(prepared_data)
@@ -78,7 +78,7 @@ class TestDSBSignature(unittest.TestCase):
         print("\n[Test DSB] Running: test_tampering_data_fails")
 
         # 1. Create a signed model (as in the previous test)
-        prepared_data = self.dsb._prepare_data_for_signing(self.encrypted_data)
+        prepared_data = self.dsb.prepare_data_for_signing(self.encrypted_data)
         signature_bits, _ = self.dsb.generate_watermark(prepared_data)
         signed_data = self.dsb.embed(prepared_data, signature_bits)
 
@@ -103,7 +103,7 @@ class TestDSBSignature(unittest.TestCase):
         print("\n[Test DSB] Running: test_tampering_signature_fails")
 
         # 1. Create a signed model
-        prepared_data = self.dsb._prepare_data_for_signing(self.encrypted_data)
+        prepared_data = self.dsb.prepare_data_for_signing(self.encrypted_data)
         signature_bits, _ = self.dsb.generate_watermark(prepared_data)
         signed_data = self.dsb.embed(prepared_data, signature_bits)
 

@@ -1,3 +1,6 @@
+import pickle
+import time
+
 import numpy as np
 import hashlib
 from typing import Sequence
@@ -50,23 +53,14 @@ class DSB_Signature(AbstractWatermarkingScheme):
         """
         Deterministically hashes an array of ciphertexts.
 
-        ⚠️ We keep the same logic : hash(str(ciphertext)).
+        We keep the same logic : hash(str(ciphertext)).
         """
-        hasher = hashlib.sha256()
-        flat_data = encrypted_data.ravel()
-
-        # Pré-bind pour éviter les lookups répétés
-        ct_method = paillier.EncryptedNumber.ciphertext
-
-        for c in flat_data:
-            ct = ct_method(c, be_secure=False)
-            hasher.update(str(ct).encode("utf-8"))
-
-        return hasher.digest()
+        hasher = hashlib.sha256(pickle.dumps([c.ciphertext(be_secure=False) for c in encrypted_data.ravel()])).digest()
+        return hasher
 
     # --- Pipeline Implementation ---
 
-    def _prepare_data_for_signing(self, encrypted_data: np.ndarray) -> np.ndarray:
+    def prepare_data_for_signing(self, encrypted_data: np.ndarray) -> np.ndarray:
         """
         "Inserts zeros": ensures that all bits in the
         signature zone are '0'. (pre-processing).
@@ -74,7 +68,6 @@ class DSB_Signature(AbstractWatermarkingScheme):
         print("DSB: Preparing data (inserting '0's)...")
         prepared_data = encrypted_data.copy()
         flat_data = prepared_data.ravel()
-
         n = min(self.signature_length, flat_data.size)
         get_bit = self._get_bit
         flip_bit = self._flip_bit
@@ -126,7 +119,7 @@ class DSB_Signature(AbstractWatermarkingScheme):
 
         flip_bit = self._flip_bit
 
-        # Indices des bits à 1 : on évite un if dans la boucle
+        # Indices of bits set to 1: we avoid an if statement in the loop
         one_indices = [i for i, b in enumerate(signature_bits[:n]) if b]
 
         for i in one_indices:
@@ -143,7 +136,7 @@ class DSB_Signature(AbstractWatermarkingScheme):
         n = min(self.signature_length, flat_data.size)
         get_bit = self._get_bit
 
-        # List comprehension plus rapide que append dans une boucle
+        # List comprehension faster than append in a loop
         return [get_bit(flat_data[i]) for i in range(n)]
 
     def verify(self, watermarked_data: np.ndarray) -> bool:
@@ -157,7 +150,7 @@ class DSB_Signature(AbstractWatermarkingScheme):
         extracted_sig_bytes = ecdsa_utils.bits_to_bytes(extracted_bits)
 
         # 2. Restore coordinates to zero (pre-processing)
-        restored_data = self._prepare_data_for_signing(watermarked_data)
+        restored_data = self.prepare_data_for_signing(watermarked_data)
 
         # 3. Calculate the hash of this restored model
         restored_hash = self._hash_model(restored_data)
