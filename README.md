@@ -18,6 +18,10 @@ Together, these techniques allow:
 - **Authenticity before decryption** (via DSB integrity verification),  
 - **Traceability after decryption** (via QIM/SQIM watermarking).
 
+## Reference
+If you use this work or the DSB method in your research, please cite the following paper:
+
+"Fast Deterministic Self-Blinding for Metadata-free Integrity Verification of Paillier-Encrypted Data: Application to 3D Models" > TechRxiv, 2025. > Link:  [https://www.techrxiv.org/users/1001324/articles/1361781...](https://www.techrxiv.org/users/1001324/articles/1361781-fast-deterministic-self-blinding-for-metadata-free-integrity-verification-of-paillier-encrypted-data-application-to-3d-models) 
 ___
 ## Features
 
